@@ -1,0 +1,63 @@
+                                          active rest wavelength:       656.30
+
+ dust geometry:
+                                          maximum velocity (km/s)      4130.00
+                                              dust velocity index         1.00
+                                               dust density index         1.51
+                                                Rmax dust (e15cm)        27.76
+                                                Rmin dust (e15cm)         8.39
+                                         dust R ratio (Rmax/Rmin)         0.30
+
+ gas geometry:
+                                          maximum velocity (km/s)      4130.00
+                                               gas velocity index         1.00
+                                                gas density index         1.51
+                                                 Rmax gas (e15cm)        27.76
+                                                 Rmin gas (e15cm)         8.39
+                                                      gas r ratio         0.30
+                                  minimum velocity at Rmin (km/s)      1248.24
+
+ properties of the dust:
+                                          Cext at line wavelength     0.61E-09
+                                          Csca at line wavelength     0.34E-08
+                                        albedo at line wavelength         5.55
+                forward scattering parameter g at line wavelength         0.30
+                         average optical depth at line wavelength         0.49
+                  average optical depth (absn) at line wavelength        -2.25
+                          average optical depth at V band (547nm)         0.66
+
+ properties of inidividual dust species:
+                                                  species number:            1
+                                                      mass weight         0.09
+                                  albedo at rest frame wavelength         0.48
+                                                  species number:            2
+                                                      mass weight         0.91
+                                  albedo at rest frame wavelength         0.86
+
+ properties of the grid:
+              volume of grid cell (and therefore clump) (e42cm^3)     0.27E+04
+                                        grid cell width (x) in cm     0.14E+16
+                                        grid cell width (y) in cm     0.14E+16
+                                        grid cell width (z) in cm     0.14E+16
+                   total analytical volume of supernova (e42cm^3)     0.87E+08
+                     volume of total grid cells inside sn (e42cm)     0.87E+08
+                                      average dust number density     0.42E-07
+               average optical depth of a cell at line wavelength         0.01
+                average optical depth of a cell at V band (547nm)         0.01
+                                 dust grain number density at Rin     0.15E-06
+                                dust grain number density at Rout     0.24E-07
+
+ dust mass check (calculated as rho*v):
+                                                         using -      0.41E-03
+                                                      requested -     0.46E-04
+
+ packet resolution:
+                              total number of packets initialised        93849
+                            number of active (propagated) packets        93848
+                                       number of inactive packets            1
+                       number of escaped packets in line of sight        70362
+                            % of escaped packets in line of sight       100.00
+                                       number of absorbed packets        23485
+                                            % of absorbed packets        25.02
+                                                absorbed weight %       307.80
+                                                        chi value       412.67
