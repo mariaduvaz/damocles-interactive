@@ -54,7 +54,7 @@ def find_nearest(array, values):
 
 
 def convert_wav_to_vel(wavarray,obspeak,labpeak):
-	#used for spectra to convert
+	#used for spectra to convert from wavelength to velocity units where 0km/s is set by the peak of the line
     final_vel = []
     
     
@@ -151,9 +151,6 @@ def datafile_2_array(filename,isint=True,zipped=True):
                 
 
 
-
-
-
 def save_output_png(directory):
     #used in loops running models many times to save output plot as a .png file
   
@@ -180,25 +177,8 @@ def save_output_png(directory):
         out_name = str(new_no)
         plt.savefig(out_name,dpi=500)
         plt.close()
-    
-    
-def savedata_2file(filename,array,fmtarguments):
-        np.savetxt(filename,array,fmt=fmtarguments)
-        
         
 
-
-def sigma_clip(array,degree):
-	#used to remove cosmic rays etc from spectra
-    stdev = np.std(array)
-    median = np.median(array)
-    print(median - (degree * stdev))
-    print(median + (degree * stdev))
-    for k in range(len(array)):   
-        if array[k] > (median + (degree * stdev)) or array[k] < (median - (degree * stdev)): 
-              array[k] = 0
-    
-    return array
 
 
 def trim_wav_flux(lambd_points,flux_points,point1,point2):
@@ -317,6 +297,13 @@ def make_Grid(v_max,Rrat,rho_index,age,divno):
 
 
 
-
-
+def setax(axis,g_s):
+   axis.view_init(elev=30, azim=50)
+   axis.set_xlabel('X axis (cm)')
+   axis.set_ylabel('Y axis (cm)')
+   axis.set_zlabel('Z axis (cm)')
+   axis.set_title("Model of gas distribution in a Supernova")
+   axis.set_xlim([-1.5*g_s,1.5*g_s])
+   axis.set_ylim([-1.5*g_s,1.5*g_s])
+   axis.set_zlim([-1.5*g_s,1.5*g_s])
 
