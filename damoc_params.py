@@ -116,6 +116,7 @@ lam_o= (1+z_red)*(wavelength_peak_1*10.0)
 obsvels = fn.convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10)
 
 
+
 #write observed line to line.out file, which is used to do the chi sq calcn in damocles! 
 filey = open(path+"/input/line.in",'w')
 filey.write(str(len(obsflux))+ " " + str(obs_err) + "\n")
@@ -145,6 +146,7 @@ for line in fi:
        line=fn.replace_str(wavelength_peak_1,0,line)
    if "second doublet component" in line:
        line=fn.replace_str(wavelength_peak_2,0,line)
+   #unless otherwise specified via the interactive button, the default dust distribition is smooth
    if  'fraction in clumps' in line:                
                  line=fn.replace_str('0.0',0,line)
    if  'dustData' in line:
@@ -182,7 +184,7 @@ ax = fig2.add_subplot(111)
 trim_lims_vel = fn.convert_wav_to_vel(trim_lims,lam_o,wavelength_peak_1*10.0)
 ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
 
-
+plt.plot(obsvels,obsflux)
 
 ########################################################################################################################################################
 ##########setting environment parameters and creating widgets for the 3D grid and sliders plotting window #############
@@ -245,7 +247,17 @@ def update(val):
   def reset(event):
     plt.cla()
     plt.tick_params(axis='both', which='major',labelsize=20)
-	
+    
+    obs_file = path +"/" + obsfile
+    obswav,obsflux= fn.datafile_2_array(obs_file,isint=False,zipped=True)
+  
+    obswav,obsflux = fn.trim_wav_flux(obswav,obsflux,trim_lims[0],trim_lims[1])
+    obsflux = [i-4.2e-17 for i in obsflux]
+    obsflux = fn.snip_spect(obswav,obsflux,*snip_regs)
+    lam_o= (1.0+z_red)*wavelength_peak_1*10.0
+    obsvels = fn.convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10.0)
+
+    plt.plot(obsvels,obsflux)
     plt.xlabel("Velocity km/s",fontsize=20)
     plt.ylabel("Brightness",fontsize=20)
 
@@ -343,15 +355,6 @@ def update(val):
   flux = [i * float(scale_input.text) for i in flux]
   
 
-  #reading in observed profile again, as clear button when pressed removes everything. need to rewrite code so this doesn't need to be operated every time sliders are updated and obs is always plotted even with clear
-  obs_file = path +"/" + obsfile
-  obswav,obsflux= fn.datafile_2_array(obs_file,isint=False,zipped=True)
-  
-  obswav,obsflux = fn.trim_wav_flux(obswav,obsflux,trim_lims[0],trim_lims[1])
-  obsflux = [i-4.2e-17 for i in obsflux]
-  obsflux = fn.snip_spect(obswav,obsflux,*snip_regs)
-  lam_o= (1.0+z_red)*wavelength_peak_1*10.0
-  obsvels = fn.convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10.0)
 
   
   
@@ -369,7 +372,7 @@ def update(val):
   plt.figure(2)
   
   plt.plot(vel,flux)
-  plt.plot(obsvels,obsflux)
+  
       
   plt.tick_params(axis='both', which='major',labelsize=20)
 	
