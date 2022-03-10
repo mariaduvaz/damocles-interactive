@@ -80,15 +80,12 @@ contains
             end do
          end if
         
-         !if using observational data, then it is generally specified in equal velocity bins (unequal frequency bins)
-         !the data is collected in unequal frequency bins so must be rescaled accordingly
+     
          if (lg_data) then
-            obs_data%mean_freq_bin = (obs_data%freq(obs_data%n_data)-obs_data%freq(1))/obs_data%n_data
             do ii = 1,obs_data%n_data-1
                if (.not. lg_los) then
-
-                  write(28,*) obs_data%vel(ii),profile_array_data_bins(ii)*obs_data%mean_freq_bin/(obs_data%freq(ii+1)-obs_data%freq(ii)),mc_error_data_bins(ii)*obs_data%mean_freq_bin/(obs_data%freq(ii+1)-obs_data%freq(ii))
-              
+                  write(28,*) obs_data%vel(ii),profile_array_data_bins(ii),mc_error_data_bins(ii)
+             
                end if
             end do
          end if

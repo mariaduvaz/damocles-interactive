@@ -22,9 +22,19 @@ contains
         close(81)
 
         !scale modelled fluxes and errors to data flux using observed line flux
-        !tot_flux/(n_recorded_packets) = final average energy per packet.  Multiply by weight to get energy at end.
+        !tot_flux/(n_recorded_packets) = final average energy per packet.  Multiply by weight to get energy at end.     
         profile_array_data_bins = line%tot_flux*total_weight_data_bins/n_recorded_packets
         mc_error_data_bins = line%tot_flux*(square_weight_data_bins**0.5)/n_recorded_packets
+
+        !observational data is generally specified in equal velocity bins
+        !the data is collected in unequal frequency bins so must be rescaled accordingly
+        obs_data%mean_freq_bin = (obs_data%freq(obs_data%n_data)-obs_data%freq(1))/obs_data%n_data
+        do ii = 1,obs_data%n_data-1
+               if (.not. lg_los) then
+                  profile_array_data_bins(ii) = profile_array_data_bins(ii)*obs_data%mean_freq_bin/(obs_data%freq(ii+1)-obs_data%freq(ii))
+                  mc_error_data_bins(ii) = mc_error_data_bins(ii)*obs_data%mean_freq_bin/(obs_data%freq(ii+1)-obs_data%freq(ii))
+	       end if
+        end do
 
         !check whether velocity bins should be excluded from chi squared calculation (due to e.g. narrow line contamination)
         obs_data%exclude(:) = .false.
@@ -47,22 +57,10 @@ contains
                     cycle
                 else
                     chi_sq = chi_sq+((profile_array_data_bins(ii)-obs_data%flux(ii))**2/((obs_data%error(ii))**2+mc_error_data_bins(ii)**2))
-                  
+                   ! print*, ii,profile_array_data_bins(ii),obs_data%flux(ii),mc_error_data_bins(ii)
                 end if
             end if
         end do
-
-!       print*,'vmax dust',dust_geometry%v_max
-!       print*,'vmax gas',gas_geometry%v_max
-!       print*,'r rat dust,vmin', dust_geometry%r_ratio,gas_geometry%v_min
-!       print*,'r rat gas,vmin',gas_geometry%r_ratio,gas_geometry%v_min
-!       print*,'dust mass',dust%mass
-!       print*,'clump power',dust_geometry%clump_power
-!       print*,'gas density power (dust)',gas_geometry%rho_power,dust_geometry%rho_power
-!       print*,'filling factor',dust_geometry%ff
-!       print*,'grain size',dust%species(1)%amin,dust%species(1)%amax
-!       print*,'R max gas,dust',gas_geometry%r_max,dust_geometry%r_max
-!       print*,'R min gas,dust',gas_geometry%r_min,dust_geometry%r_min       
 
        print*, 'chi sq - ', chi_sq
 !        print*,'number of data points',n_data_points
