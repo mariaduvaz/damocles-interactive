@@ -20,7 +20,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider,Button,CheckButtons,TextBox
 from matplotlib.artist import Artist
-
+import ipywidgets as widgets
 
 
 #################################################################################################################################################
@@ -279,7 +279,21 @@ def update(val):
       fi3.close()
   
 
+  def refit_scaled(event,arg1,arg2,arg3,arg4,arg5,arg6):
+        
+        
 
+        arg1 = [i * float(scale_input.text) for i in arg1]
+
+        chi_sq_rescale = fn.chi_sq(arg2,arg1,arg3,arg4)
+        print("chi sq: ",chi_sq_rescale)
+
+        plt.plot(arg5,arg1)
+        
+   #     frame3=plt.text(3500,np.amax(obsflux)-np.amax(obsflux)/10,"chi sq=" + str(chi_sq_rescale),fontsize=20)  
+        
+        arg6.canvas.draw()
+     #   Artist.remove(frame3)	
   
   def set_clump(event): 
       fi2 = fileinput.FileInput(files=(dust_file),inplace=True)
@@ -300,8 +314,9 @@ def update(val):
   #if any of the buttons are pressed, this calls the inset functions
   amc_button.on_clicked(set_amc)
   clump_button.on_clicked(set_clump)
-  button.on_clicked(reset)
 
+  button.on_clicked(reset)
+ 
   newv = s_vmax.val
   newr = s_r.val
   newrho = s_rho.val
@@ -350,10 +365,10 @@ def update(val):
   mod_prop = path + "/output/model_properties.out"
   props = fn.datafile_2_array(mod_prop,isint=False,zipped=False)
 
-
+  #run chi sq here 
   #scaling model flux by additional factor provided in Fig 2
-  flux = [i * float(scale_input.text) for i in flux]
   
+  #have to use the lambda function to pass the refit_scaled def more than one arg, as by default it only accepts one, the event handler
 
 
   
@@ -362,9 +377,15 @@ def update(val):
   for i in props:      
         if 'optical' in i and 'depth' in i and 'wavelength' in i and 'cell' not in i and '(absn)' not in i:
            tau = i[-1]
-        if 'chi' in i:               
-           chi_sqq = float(i[-1])/len(flux)
+
+
   
+  scale_input.on_submit(lambda event, args=(flux,obsflux,obs_err,flux_e,vel,fig2): refit_scaled(event,*args))
+  flux = [i * float(scale_input.text) for i in flux]
+  
+  
+  chi_sqq = fn.chi_sq(obsflux,flux,obs_err,flux_e) 
+        
   
   
   ###plotting model against observed line profile panel
@@ -381,6 +402,8 @@ def update(val):
   
   frame1=plt.text(5000,np.amax(obsflux),"tau=" + str(tau),fontsize=20)
   frame2=plt.text(3500,np.amax(obsflux)-np.amax(obsflux)/10,"chi sq=" + str(chi_sqq),fontsize=20)        
+  
+
   
   #need to reconfigure this so every time a button is activated the text is not removed
   fig2.canvas.draw()
