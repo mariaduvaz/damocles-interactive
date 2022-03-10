@@ -1,0 +1,12 @@
+damocles
+damocleslib.cpython-37m-x86_64-linux-gnu.so
+input/dust.in
+input/line.in
+input/species.in
+output/dust_grid.out
+output/grid.out
+output/integrated_line_profile.out
+output/integrated_line_profile_binned.out
+output/log_file.out
+output/model_properties.out
+output/modelled_line_fine_res.out
