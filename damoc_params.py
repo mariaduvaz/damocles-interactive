@@ -280,8 +280,7 @@ def update(val):
   
 
   def refit_scaled(event,arg1,arg2,arg3,arg4,arg5,arg6):
-        
-        
+               
 
         arg1 = [i * float(scale_input.text) for i in arg1]
 
