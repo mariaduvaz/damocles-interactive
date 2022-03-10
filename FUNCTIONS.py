@@ -148,37 +148,6 @@ def datafile_2_array(filename,isint=True,zipped=True):
                     
     return lists                
 
-                
-
-
-def save_output_png(directory):
-    #used in loops running models many times to save output plot as a .png file
-  
-    x = os.listdir(directory)
-    if x == []:
-        out_name = "1"
-        os.chdir(directory)
-        
-        plt.savefig(out_name,dpi=500)
-        plt.close()
-    else:
-   
-        os.chdir(directory)
-    
-        filenumbers = []
-        for i in x:
-            part1,part2 = i.split('.')
-            filenumbers.append(part1)
-    
-    
-        sort_file = sorted(filenumbers, key=int)
-        print(sort_file)
-        new_no = int(sort_file[-1]) + 1
-        out_name = str(new_no)
-        plt.savefig(out_name,dpi=500)
-        plt.close()
-        
-
 
 
 def trim_wav_flux(lambd_points,flux_points,point1,point2):
@@ -307,3 +276,19 @@ def setax(axis,g_s):
    axis.set_ylim([-1.5*g_s,1.5*g_s])
    axis.set_zlim([-1.5*g_s,1.5*g_s])
 
+
+def chi_sq(obs_flux,mod_flux,obs_err,mod_err):
+    obs_flux=obs_flux[0:-1] #cutting off last value as damocles returns rebinned model flux array missing final because of how the unequal frequency bins for the model are rebinned
+    if len(obs_flux) == len(mod_flux):
+        chi_sq=0
+        for i in range(len(obs_flux)):
+           
+            chi_sq += ((mod_flux[i] - obs_flux[i])**2/(obs_err**2 + mod_err[i]**2))
+           
+    #want to return reduced chi sq so you divide by the array length
+   
+        return chi_sq/len(obs_flux)
+    else:
+        print(len(obs_flux),len(mod_flux))
+        print("observed and modelled flux arrays need to be same length to perform chi sq calculation")
+        
