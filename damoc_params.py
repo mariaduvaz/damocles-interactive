@@ -5,22 +5,78 @@ Created on Wed Dec 29 14:58:36 2021
 
 @author: maria
 """
+import tkinter as tk
+
 
 
 import os
 import damocleslib as model
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import sys
 import fileinput
-import FUNCTIONS as fn 
+from FUNCTIONS import *
 from mpl_toolkits import mplot3d
 import matplotlib.gridspec as gridspec
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider,Button,CheckButtons,TextBox
+#from matplotlib.widgets import Slider,Button,CheckButtons,TextBox
 from matplotlib.artist import Artist
-import ipywidgets as widgets
+
+###
+class Buttons():
+    def make_amc_button():
+        confirmation = tk.BooleanVar()
+        amc_button = tk.Checkbutton(rootwindow, text="AmC?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: is_Amc(confirmation))
+        amc_button.pack()
+   
+    def make_clump_button():
+        confirmation = tk.BooleanVar()
+        clump_button = tk.Checkbutton(rootwindow, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: is_Clump(confirmation))
+        clump_button.pack()
+
+
+
+'''
+class Buttons(tk.Frame):
+    def __init__(self):
+        self.button = tk.Button(
+                text="Click me!",
+                width=25,
+                height=5,
+                bg="blue",
+                fg="yellow",
+                )
+
+    
+
+
+class DamoclesApplication(tk.Frame):
+    def __init__(self, parent, *args, **kwargs):
+        tk.Frame.__init__(self, parent, *args, **kwargs)
+        self.parent = parent
+        parent.geometry("2000x1500")
+        self.parent.button1 = Buttons()
+        
+
+       # self.greet_button = Button(master, text="Greet", command=self.greet)
+       # self.greet_button.pack()
+
+#        self.close_button = Button(master, text="Close", command=master.quit)
+ #       self.close_button.pack()
+
+
+
+
+
+root = tk.Tk()
+DamoclesApplication(root).pack(side="top", fill="both", expand=True)
+root.mainloop()
+
+#setting up main tkinter window
+#matplotlib.use("TkAgg")
+
+'''
 
 
 #################################################################################################################################################
@@ -28,11 +84,8 @@ import ipywidgets as widgets
 ##########################################  These parameters are parsed to the damocles input files #############################################
 #################################################################################################################################################
 
-
 #specify redshift of object here
 z_red=0.034
-
-
 
 #trim_lims determine the limits of wavelength space where your line profile is at. 
 trim_lims = (6650,6950)
@@ -117,7 +170,7 @@ obsvels = fn.convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10)
 
 
 
-#write observed line to line.out file, which is used to do the chi sq calcn in damocles! 
+#write observed line to line.out file, which is used to do rebin the damocles model 
 filey = open(path+"/input/line.in",'w')
 filey.write(str(len(obsflux))+ " " + str(obs_err) + "\n")
 for j in range(len(obsflux)):    
@@ -126,9 +179,7 @@ filey.close()
 
 
 
-
-
-#Replace values in files in input.in fortran file with initial slider values defined in script
+#Replace fixed values in files in input fortran file 
 
 fi = fileinput.FileInput(files=(input_file,dust_file,gas_file,spec_file),inplace=True)
 for line in fi:
@@ -140,8 +191,6 @@ for line in fi:
        line=fn.replace_str(obs_scale,0,line)
    if 'doublet?' in line:
        line=fn.replace_str(is_doublet,0,line)
-   if 'Msun' in line:
-       line=fn.replace_str(mdust_init,0,line)
    if "first doublet component" in line:
        line=fn.replace_str(wavelength_peak_1,0,line)
    if "second doublet component" in line:
@@ -149,9 +198,6 @@ for line in fi:
    #unless otherwise specified via the interactive button, the default dust distribition is smooth
    if  'fraction in clumps' in line:                
                  line=fn.replace_str('0.0',0,line)
-   if  'dustData' in line:
-       line=fn.replace_str(grain_size_init,3,line)
-       line=fn.replace_str(grain_size_init,4,line)
   
    sys.stdout.write(line)  
 
@@ -159,6 +205,20 @@ fi.close()
 
 
 
+
+
+if __name__ == '__main__':
+  rootwindow = tk.Tk()
+  rootwindow.geometry("2000x1500")
+  Buttons.make_amc_button()
+  Buttons.make_clump_button()
+  
+
+  rootwindow.mainloop()
+
+
+
+'''
 
 ########################################################################################################################################################
 ##########setting environment parameters and creating widgets for the observed spectral line and damocles model comparison plotting window #############
@@ -206,6 +266,8 @@ l = ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
 cbar = fig.colorbar(l)
 cbar.set_label('density', rotation=270,size=18,labelpad=20)
 cbar.ax.tick_params(labelsize=13)
+
+
 
 ax_vmax = plt.axes([0.25, 0.0, 0.65, 0.02])
 ax_r = plt.axes([0.25, 0.05, 0.65, 0.02])
@@ -420,7 +482,7 @@ s_dm.on_changed(update)
 s_gs.on_changed(update)
 
 
-
-
 plt.show()
+'''
+
 #'''
