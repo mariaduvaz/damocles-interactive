@@ -44,8 +44,12 @@ class DamoclesInput():
         clump_button = tk.Checkbutton(frame, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Clump(confirmation),bg='red',activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
         clump_button.pack()
         
- #   def make_slider(self,frame):
-        
+    def make_slider(self,frame,init_val,range_vals,var_name):
+        #scale_var = tk.DoubleVar()
+        #current_value = scale_var.set(1)
+        slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',label=var_name)
+        slider.set(init_val)
+        slider.pack()
     
     def is_Amc(self,conf):
       fi3 = fileinput.FileInput(files=(self.spec_file),inplace=True)
@@ -121,7 +125,7 @@ root.mainloop()
 
 #setting up main tkinter window
 #matplotlib.use("TkAgg")
-
+'''
 
 
 
@@ -149,7 +153,7 @@ wavelength_peak_2= 732.39
 doublet_ratio = 3.13
 
 #These are our default model parameters values for the sliders
--5000,7000
+
 v_max_init=4130  #maximum velocity at edge of shell
 Rrat_init = 0.27 #radius of inner shell boundary divided by ratio of outer shell. Determines how 'thick' your gas shell is
 rho_index_init=1.32   #density is proportional to radius^(-rho_index)
@@ -180,11 +184,11 @@ dust_file = "input/dust.in"
 gas_file = "input/gas.in"
 spec_file = "input/species.in"
 
-obswav,obsflux= fn.datafile_2_array(obsfile,isint=False,zipped=True)
-inlines = fn.datafile_2_array(input_file,isint=False,zipped=False)
-dustlines = fn.datafile_2_array(dust_file,isint=False,zipped=False)
-gaslines = fn.datafile_2_array(gas_file,isint=False,zipped=False)
-speclines = fn.datafile_2_array(spec_file,isint=False,zipped=False)
+obswav,obsflux= datafile_2_array(obsfile,isint=False,zipped=True)
+inlines = datafile_2_array(input_file,isint=False,zipped=False)
+dustlines = datafile_2_array(dust_file,isint=False,zipped=False)
+gaslines = datafile_2_array(gas_file,isint=False,zipped=False)
+speclines = datafile_2_array(spec_file,isint=False,zipped=False)
 
 
 ###########################################################################################
@@ -196,14 +200,14 @@ obsflux = [i-4.2e-17 for i in obsflux]
 
 
 #calculate observational uncert on input spectrum using background regions provided
-bg_vels,bg_flux = fn.trim_wav_flux(obswav,obsflux,bg_lims[0],bg_lims[1])
+bg_vels,bg_flux = trim_wav_flux(obswav,obsflux,bg_lims[0],bg_lims[1])
 obs_err = np.std(bg_flux)
 
 
 ####trim spectra to line you want
-obswav,obsflux = fn.trim_wav_flux(obswav,obsflux,trim_lims[0],trim_lims[1])
+obswav,obsflux = trim_wav_flux(obswav,obsflux,trim_lims[0],trim_lims[1])
 #snip out narrow line or contaminating region
-obsflux = fn.snip_spect(obswav,obsflux,*snip_regs)
+obsflux = snip_spect(obswav,obsflux,*snip_regs)
 
 #scale which models line profile peaks to roughly the same size, may need to be manually adjusted depending on SNR
 #####NEED TO CHECK WHETHER THIS VALUE CHANGES GIVEN CHANGING PHOTON NO 
@@ -212,7 +216,7 @@ obs_scale = np.amax(obsflux)*60
 
 #convert from wavelength space to velocity space and correct for redshift of supernova's host galaxy
 lam_o= (1+z_red)*(wavelength_peak_1*10.0)
-obsvels = fn.convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10)
+obsvels = convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10)
 
 
 
@@ -230,26 +234,26 @@ filey.close()
 fi = fileinput.FileInput(files=(input_file,dust_file,gas_file,spec_file),inplace=True)
 for line in fi:
    if 'day' in line:
-       line=fn.replace_str(age_d,0,line)
+       line=replace_str(age_d,0,line)
    if  'number of photons' in line:
-       line=fn.replace_str(phot_no,0,line)
+       line=replace_str(phot_no,0,line)
    if  'total flux of line to scale model' in line:
-       line=fn.replace_str(obs_scale,0,line)
+       line=replace_str(obs_scale,0,line)
    if 'doublet?' in line:
-       line=fn.replace_str(is_doublet,0,line)
+       line=replace_str(is_doublet,0,line)
    if "first doublet component" in line:
-       line=fn.replace_str(wavelength_peak_1,0,line)
+       line=replace_str(wavelength_peak_1,0,line)
    if "second doublet component" in line:
-       line=fn.replace_str(wavelength_peak_2,0,line)
+       line=replace_str(wavelength_peak_2,0,line)
    #unless otherwise specified via the interactive button, the default dust distribition is smooth
    if  'fraction in clumps' in line:                
-                 line=fn.replace_str('0.0',0,line)
+                 line=replace_str('0.0',0,line)
   
    sys.stdout.write(line)  
 
 fi.close()
 
-'''
+
 
 
 
@@ -260,11 +264,17 @@ if __name__ == '__main__':
   frame_1 = tk.Frame(bg='blue',padx=20,pady=10)#height=50,width=50)
   frame_2 = tk.Frame()
   frame_3 = tk.Frame()
-  print(TkFont.families())
+  
   DamoclesInput = DamoclesInput()
   DamoclesInput.make_amc_button(frame_1)
   DamoclesInput.make_clump_button(frame_1)
   
+  DamoclesInput.make_slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)")
+  DamoclesInput.make_slider(frame_1,Rrat_init,(0.001, 1),"Rin/Rout$")
+  DamoclesInput.make_slider(frame_1,rho_index_init,(-6, 6),"\u03B2")
+  DamoclesInput.make_slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'") #THIS IS IN A LOG SCALE
+  DamoclesInput.make_slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BC m)')
+
   frame_1.pack()
   frame_2.pack()
   frame_3.pack()
@@ -296,7 +306,7 @@ plt.subplots_adjust(left=0.25, bottom=0.25)
 
 ax = fig2.add_subplot(111)
 
-trim_lims_vel = fn.convert_wav_to_vel(trim_lims,lam_o,wavelength_peak_1*10.0)
+trim_lims_vel = convert_wav_to_vel(trim_lims,lam_o,wavelength_peak_1*10.0)
 ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
 
 plt.plot(obsvels,obsflux)
@@ -312,9 +322,9 @@ ax = fig.add_subplot(111, projection='3d')
 plt.subplots_adjust(left=0.25, bottom=0.25)
 
 
-x,y,z,d = fn.make_Grid(v_max_init,Rrat_init,rho_index_init,age_d,grid_divs)
+x,y,z,d = make_Grid(v_max_init,Rrat_init,rho_index_init,age_d,grid_divs)
 grid_lim= np.amax(x)
-fn.setax(ax,grid_lim)
+setax(ax,grid_lim)
 
 
 l = ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
@@ -366,13 +376,13 @@ def update(val):
     plt.tick_params(axis='both', which='major',labelsize=20)
     
     obs_file = path +"/" + obsfile
-    obswav,obsflux= fn.datafile_2_array(obs_file,isint=False,zipped=True)
+    obswav,obsflux= datafile_2_array(obs_file,isint=False,zipped=True)
   
-    obswav,obsflux = fn.trim_wav_flux(obswav,obsflux,trim_lims[0],trim_lims[1])
+    obswav,obsflux = trim_wav_flux(obswav,obsflux,trim_lims[0],trim_lims[1])
     obsflux = [i-4.2e-17 for i in obsflux]
-    obsflux = fn.snip_spect(obswav,obsflux,*snip_regs)
+    obsflux = snip_spect(obswav,obsflux,*snip_regs)
     lam_o= (1.0+z_red)*wavelength_peak_1*10.0
-    obsvels = fn.convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10.0)
+    obsvels = convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10.0)
 
     plt.plot(obsvels,obsflux)
     plt.xlabel("Velocity km/s",fontsize=20)
@@ -385,13 +395,13 @@ def update(val):
       if amc_button.get_status() == [True]: 
           for line in fi3:	           
             if  'dustData' in line:                 
-                 line=fn.replace_str('\'dustData/amC-zb1.nk\'',1,line)
+                 line=replace_str('\'dustData/amC-zb1.nk\'',1,line)
             sys.stdout.write(line)     
             
       else:
          for line in fi3:	
              if  'dustData' in line:
-                 line=fn.replace_str('\'dustData/sil-dlee.nk\'',1,line)        
+                 line=replace_str('\'dustData/sil-dlee.nk\'',1,line)        
              sys.stdout.write(line)
       fi3.close()
   
@@ -401,7 +411,7 @@ def update(val):
 
         arg1 = [i * float(scale_input.text) for i in arg1]
 
-        chi_sq_rescale = fn.chi_sq(arg2,arg1,arg3,arg4)
+        chi_sq_rescale = chi_sq(arg2,arg1,arg3,arg4)
         print("chi sq: ",chi_sq_rescale)
 
         plt.plot(arg5,arg1)
@@ -416,13 +426,13 @@ def update(val):
       if clump_button.get_status() == [True]:        
           for line in fi2:	             
             if  'fraction' in line:                
-                 line=fn.replace_str('1.0',0,line)
+                 line=replace_str('1.0',0,line)
             sys.stdout.write(line)     
             
       else:
          for line in fi2:	
              if  'fraction' in line:
-                 line=fn.replace_str('0.0',0,line)         
+                 line=replace_str('0.0',0,line)         
              sys.stdout.write(line)
       fi2.close()
   
@@ -444,9 +454,9 @@ def update(val):
   plt.figure(1)
   ax.clear()
    
-  x,y,z,d = fn.make_Grid(newv,newr,newrho,age_d,grid_divs)
+  x,y,z,d = make_Grid(newv,newr,newrho,age_d,grid_divs)
   grid_lim= np.amax(x)
-  fn.setax(ax,grid_lim)
+  setax(ax,grid_lim)
   
   l= ax.scatter(x,y,z,c=d,cmap="nipy_spectral") # update the plot
   
@@ -455,16 +465,16 @@ def update(val):
   fi2 = fileinput.FileInput(files=(dust_file,spec_file),inplace=True)
   for line in fi2:	
     if 'max dust velocity' in line:
-     line=fn.replace_str(newv,0,line)
+     line=replace_str(newv,0,line)
     if 'Rin/Rout' in line:
-     line=fn.replace_str(newr,0,line)
+     line=replace_str(newr,0,line)
     if 'rho~r^-q' in line:
-     line=fn.replace_str(newrho,0,line)
+     line=replace_str(newrho,0,line)
     if 'Total dust mass' in line:
-     line=fn.replace_str(newdm,0,line)
+     line=replace_str(newdm,0,line)
     if  'dustData' in line:
-          line=fn.replace_str(newgs,3,line)
-          line=fn.replace_str(newgs,4,line)     
+          line=replace_str(newgs,3,line)
+          line=replace_str(newgs,4,line)     
     sys.stdout.write(line)
   fi2.close()
 
@@ -475,11 +485,11 @@ def update(val):
 
   #reading model output file after damocles has run
   outfile = path + "/output/integrated_line_profile_binned.out"
-  vel,flux,flux_e= fn.datafile_2_array(outfile,isint=False,zipped=True)
+  vel,flux,flux_e= datafile_2_array(outfile,isint=False,zipped=True)
   
   #file that tells you tau and chi sq
   mod_prop = path + "/output/model_properties.out"
-  props = fn.datafile_2_array(mod_prop,isint=False,zipped=False)
+  props = datafile_2_array(mod_prop,isint=False,zipped=False)
 
   #run chi sq here 
   #scaling model flux by additional factor provided in Fig 2
@@ -500,7 +510,7 @@ def update(val):
   flux = [i * float(scale_input.text) for i in flux]
   
   
-  chi_sqq = fn.chi_sq(obsflux,flux,obs_err,flux_e) 
+  chi_sqq = chi_sq(obsflux,flux,obs_err,flux_e) 
         
   
   
