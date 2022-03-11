@@ -6,7 +6,7 @@ Created on Wed Dec 29 14:58:36 2021
 @author: maria
 """
 import tkinter as tk
-
+import tkinter.font as TkFont
 
 
 import os
@@ -24,16 +24,62 @@ import numpy as np
 from matplotlib.artist import Artist
 
 ###
-class Buttons():
-    def make_amc_button():
+class DamoclesInput():
+    
+    "This class contains all functions and variables which use the GUI to set the input parameters which are passed to the DAMOCLES code"
+    
+    def __init__(self):
+        self.spec_file = "input/species.in"
+        self.dust_file = "input/dust.in"
+        self.buttonfont = TkFont.Font(family='bitstream charter', size=40)
+        
+    def make_amc_button(self,frame):
         confirmation = tk.BooleanVar()
-        amc_button = tk.Checkbutton(rootwindow, text="AmC?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: is_Amc(confirmation))
+        amc_button = tk.Checkbutton(frame, text="AmC?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Amc(confirmation),bg='red',activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
         amc_button.pack()
    
-    def make_clump_button():
+    def make_clump_button(self,frame):
+        
         confirmation = tk.BooleanVar()
-        clump_button = tk.Checkbutton(rootwindow, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: is_Clump(confirmation))
+        clump_button = tk.Checkbutton(frame, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Clump(confirmation),bg='red',activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
         clump_button.pack()
+        
+ #   def make_slider(self,frame):
+        
+    
+    def is_Amc(self,conf):
+      fi3 = fileinput.FileInput(files=(self.spec_file),inplace=True)
+
+      if conf.get() == True: 
+          for line in fi3:	           
+            if  'dustData' in line:                 
+                 line=replace_str('\'dustData/amC-zb1.nk\'',1,line)
+            sys.stdout.write(line)     
+            
+      else:
+         for line in fi3:	
+             if  'dustData' in line:
+                 line=replace_str('\'dustData/sil-dlee.nk\'',1,line)        
+             sys.stdout.write(line)
+      fi3.close()
+      
+      
+    def is_Clump(self,conf): 
+      fi2 = fileinput.FileInput(files=(self.dust_file),inplace=True)
+      
+      if conf.get() == True:        
+          for line in fi2:	             
+            if  'fraction' in line:                
+                 line=replace_str('1.0',0,line)
+            sys.stdout.write(line)     
+            
+      else:
+         for line in fi2:	
+             if  'fraction' in line:
+                 line=replace_str('0.0',0,line)         
+             sys.stdout.write(line)
+      fi2.close()
+        
 
 
 
@@ -76,7 +122,7 @@ root.mainloop()
 #setting up main tkinter window
 #matplotlib.use("TkAgg")
 
-'''
+
 
 
 #################################################################################################################################################
@@ -203,16 +249,25 @@ for line in fi:
 
 fi.close()
 
-
+'''
 
 
 
 if __name__ == '__main__':
   rootwindow = tk.Tk()
   rootwindow.geometry("2000x1500")
-  Buttons.make_amc_button()
-  Buttons.make_clump_button()
   
+  frame_1 = tk.Frame(bg='blue',padx=20,pady=10)#height=50,width=50)
+  frame_2 = tk.Frame()
+  frame_3 = tk.Frame()
+  print(TkFont.families())
+  DamoclesInput = DamoclesInput()
+  DamoclesInput.make_amc_button(frame_1)
+  DamoclesInput.make_clump_button(frame_1)
+  
+  frame_1.pack()
+  frame_2.pack()
+  frame_3.pack()
 
   rootwindow.mainloop()
 
