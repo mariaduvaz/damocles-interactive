@@ -31,24 +31,28 @@ class DamoclesInput():
     def __init__(self):
         self.spec_file = "input/species.in"
         self.dust_file = "input/dust.in"
-        self.buttonfont = TkFont.Font(family='bitstream charter', size=40)
+        self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
+        self.sliderfont = TkFont.Font(family='bitstream charter', size=15)
         
     def make_amc_button(self,frame):
         confirmation = tk.BooleanVar()
-        amc_button = tk.Checkbutton(frame, text="AmC?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Amc(confirmation),bg='red',activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
-        amc_button.pack()
+        amc_button = tk.Checkbutton(frame, text="AmC?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Amc(confirmation),bg='red',
+                                    activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
+        amc_button.pack(fill='x')
+        #amc_button.pack()
    
     def make_clump_button(self,frame):
         
         confirmation = tk.BooleanVar()
-        clump_button = tk.Checkbutton(frame, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Clump(confirmation),bg='red',activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
-        clump_button.pack()
+        clump_button = tk.Checkbutton(frame, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Clump(confirmation),bg='red',
+                                      activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
+        clump_button.pack(fill='x')
         
-    def make_slider(self,frame,init_val,range_vals,var_name):
-        #scale_var = tk.DoubleVar()
-        #current_value = scale_var.set(1)
-        slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',label=var_name)
+    def make_slider(self,frame,init_val,range_vals,var_name,step_size):
+        lab = tk.Label(frame,text=var_name,font=self.sliderfont)
+        slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=18,length=900,font=self.sliderfont)
         slider.set(init_val)
+        lab.pack(fill='x',padx=1)
         slider.pack()
     
     def is_Amc(self,conf):
@@ -267,15 +271,17 @@ if __name__ == '__main__':
   
   DamoclesInput = DamoclesInput()
   DamoclesInput.make_amc_button(frame_1)
-  DamoclesInput.make_clump_button(frame_1)
   
-  DamoclesInput.make_slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)")
-  DamoclesInput.make_slider(frame_1,Rrat_init,(0.001, 1),"Rin/Rout$")
-  DamoclesInput.make_slider(frame_1,rho_index_init,(-6, 6),"\u03B2")
-  DamoclesInput.make_slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'") #THIS IS IN A LOG SCALE
-  DamoclesInput.make_slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BC m)')
+  DamoclesInput.make_clump_button(frame_1)
+  #frame_1.pack(side=tk.LEFT)
+  
+  DamoclesInput.make_slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
+  DamoclesInput.make_slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
+  DamoclesInput.make_slider(frame_1,rho_index_init,(-6, 6),"\u03B2",0.01)
+  DamoclesInput.make_slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'",0.001) #THIS IS IN A LOG SCALE
+  DamoclesInput.make_slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BCm)',0.001)
 
-  frame_1.pack()
+  frame_1.place(x=950,y=550)
   frame_2.pack()
   frame_3.pack()
 
