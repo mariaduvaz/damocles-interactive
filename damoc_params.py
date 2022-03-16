@@ -20,10 +20,36 @@ from FUNCTIONS import *
 from mpl_toolkits import mplot3d
 import matplotlib.gridspec as gridspec
 import numpy as np
+from matplotlib.figure import Figure
 #from matplotlib.widgets import Slider,Button,CheckButtons,TextBox
 from matplotlib.artist import Artist
+matplotlib.use('TkAgg')
+from matplotlib.backends.backend_tkagg import (
+    FigureCanvasTkAgg,
+    NavigationToolbar2Tk
+)
 
 ###
+
+
+class Slider():
+    def __init__(self,frame,init_val,range_vals,var_name,step_size):
+    #def make_slider(self,frame,init_val,range_vals,var_name,step_size):
+        self.sliderfont = TkFont.Font(family='bitstream charter', size=15)
+        self.lab = tk.Label(frame,text=var_name,font=self.sliderfont)
+        self.slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=18,length=900,font=self.sliderfont)      
+        self.slider.set(init_val)
+        self.slider.bind("<ButtonRelease-1>", self.slider_command)      
+        self.lab.pack(fill='x',padx=1)      
+        self.slider.pack()
+        #print(self.slider.get())
+        
+    
+    def slider_command(self,event):
+        slide_val = self.slider.get()
+        GasGrid.update_gasgrid(frame_2,slide_val)
+        print("CHANGED",slide_val)
+        
 class DamoclesInput():
     
     "This class contains all functions and variables which use the GUI to set the input parameters which are passed to the DAMOCLES code"
@@ -32,7 +58,8 @@ class DamoclesInput():
         self.spec_file = "input/species.in"
         self.dust_file = "input/dust.in"
         self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
-        self.sliderfont = TkFont.Font(family='bitstream charter', size=15)
+        
+
         
     def make_amc_button(self,frame):
         confirmation = tk.BooleanVar()
@@ -41,19 +68,14 @@ class DamoclesInput():
         amc_button.pack(fill='x')
         #amc_button.pack()
    
+    
     def make_clump_button(self,frame):
         
         confirmation = tk.BooleanVar()
         clump_button = tk.Checkbutton(frame, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Clump(confirmation),bg='red',
                                       activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
         clump_button.pack(fill='x')
-        
-    def make_slider(self,frame,init_val,range_vals,var_name,step_size):
-        lab = tk.Label(frame,text=var_name,font=self.sliderfont)
-        slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=18,length=900,font=self.sliderfont)
-        slider.set(init_val)
-        lab.pack(fill='x',padx=1)
-        slider.pack()
+   
     
     def is_Amc(self,conf):
       fi3 = fileinput.FileInput(files=(self.spec_file),inplace=True)
@@ -89,6 +111,62 @@ class DamoclesInput():
       fi2.close()
         
 
+class GasGrid():
+    
+    def __init__(self,frame):
+        self.fig = Figure(figsize=(8, 6), dpi=100)
+        self.ax = self.fig.add_subplot(111, projection='3d')
+        self.figure_canvas= FigureCanvasTkAgg(self.fig,frame)
+    
+    
+    def initialise_grid_axis(self,frame):
+        
+        
+        #reading in slider values that are found from the slider values instantiated by the make_slider function in the DamoclesInput class
+        x,y,z,d = make_Grid(v_max_init,Rrat_init,rho_index_init,age_d,grid_divs)
+        grid_lim= np.amax(x)
+        setax(self.ax,grid_lim)
+
+
+        l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
+        cbar = self.fig.colorbar(l)
+        cbar.set_label('density', rotation=270,size=18,labelpad=20)
+        cbar.ax.tick_params(labelsize=13)
+        
+        self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
+        #self.figure_canvas.draw()
+
+
+    def update_gasgrid(self,frame,value):
+        
+        
+        
+         #print(value)
+         try: 
+             self.figure_canvas.get_tk_widget().pack_forget()
+         except AttributeError: 
+            pass 
+        
+        
+         ###GET ALL SLIDER VALUES HERE
+         
+         
+        
+         x,y,z,d = make_Grid(value,Rrat_init,rho_index_init,age_d,grid_divs)
+         
+
+         grid_lim= np.amax(x)
+         #setax(self.ax,grid_lim)
+
+
+           
+         l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
+               
+
+         self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
+         self.figure_canvas.draw()
+  
+    
 
 
 '''
@@ -266,27 +344,42 @@ if __name__ == '__main__':
   rootwindow.geometry("2000x1500")
   
   frame_1 = tk.Frame(bg='blue',padx=20,pady=10)#height=50,width=50)
-  frame_2 = tk.Frame()
+  frame_2 = tk.Frame(height=50,width=50)
   frame_3 = tk.Frame()
   
   DamoclesInput = DamoclesInput()
   DamoclesInput.make_amc_button(frame_1)
-  
   DamoclesInput.make_clump_button(frame_1)
   #frame_1.pack(side=tk.LEFT)
   
-  DamoclesInput.make_slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
-  DamoclesInput.make_slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
-  DamoclesInput.make_slider(frame_1,rho_index_init,(-6, 6),"\u03B2",0.01)
-  DamoclesInput.make_slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'",0.001) #THIS IS IN A LOG SCALE
-  DamoclesInput.make_slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BCm)',0.001)
+  v_slider = Slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
+  r_slider = Slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
+  rho_slider = Slider(frame_1,rho_index_init,(-6, 6),"\u03B2",0.01)
+  md_slider = Slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'",0.001)
+  gs_slider = Slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BCm)',0.001)
+  
+  #print("OUT OF EVENT",r_slider.slider.get())
+  #print("OUT OF EVENT",md_slider.slider.get())
+  
+  #
+  #DamoclesInput.make_slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
+  #DamoclesInput.make_slider
+  #DamoclesInput.make_slider(frame_1,rho_index_init,(-6, 6),"\u03B2",0.01)
+  #DamoclesInput.make_slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'",0.001) #THIS IS IN A LOG SCALE
+  #DamoclesInput.make_slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BCm)',0.001)
+  
+  
+  
+  GasGrid = GasGrid(frame_2)
+  GasGrid.initialise_grid_axis(frame_2)
+  #GasGrid.update_gasgrid(frame_2)
+  
 
   frame_1.place(x=950,y=550)
-  frame_2.pack()
+  frame_2.place(x=1050,y=10)
   frame_3.pack()
 
   rootwindow.mainloop()
-
 
 
 '''
@@ -501,7 +594,7 @@ def update(val):
   #scaling model flux by additional factor provided in Fig 2
   
   #have to use the lambda function to pass the refit_scaled def more than one arg, as by default it only accepts one, the event handler
-
+  
 
   
   
