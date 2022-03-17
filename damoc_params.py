@@ -35,20 +35,31 @@ from matplotlib.backends.backend_tkagg import (
 class Slider():
     def __init__(self,frame,init_val,range_vals,var_name,step_size):
     #def make_slider(self,frame,init_val,range_vals,var_name,step_size):
+        self.var_name = var_name
         self.sliderfont = TkFont.Font(family='bitstream charter', size=15)
-        self.lab = tk.Label(frame,text=var_name,font=self.sliderfont)
+        self.lab = tk.Label(frame,text=self.var_name,font=self.sliderfont)
         self.slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=18,length=900,font=self.sliderfont)      
         self.slider.set(init_val)
         self.slider.bind("<ButtonRelease-1>", self.slider_command)      
-        self.lab.pack(fill='x',padx=1)      
+        self.lab.pack(fill='x', padx=1)      
         self.slider.pack()
+        self.frame=frame
         #print(self.slider.get())
-        
+         
     
     def slider_command(self,event):
-        slide_val = self.slider.get()
-        GasGrid.update_gasgrid(frame_2,slide_val)
-        print("CHANGED",slide_val)
+       
+        slider_vals = []
+        for child_widget in self.frame.winfo_children():
+	          if child_widget.winfo_class() == 'Scale':
+    	            slider_vals.append(child_widget.get())
+    
+        print(slider_vals)
+        GasGrid.update_gasgrid(frame_2,slider_vals)
+        
+       # model.run_damocles_wrap() 
+     
+    
         
 class DamoclesInput():
     
@@ -75,7 +86,7 @@ class DamoclesInput():
         clump_button = tk.Checkbutton(frame, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Clump(confirmation),bg='red',
                                       activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
         clump_button.pack(fill='x')
-   
+    
     
     def is_Amc(self,conf):
       fi3 = fileinput.FileInput(files=(self.spec_file),inplace=True)
@@ -121,8 +132,7 @@ class GasGrid():
     
     def initialise_grid_axis(self,frame):
         
-        
-        #reading in slider values that are found from the slider values instantiated by the make_slider function in the DamoclesInput class
+        #plotting initial grid made by specified initial parameter values and setting up color-bar scale and axis 
         x,y,z,d = make_Grid(v_max_init,Rrat_init,rho_index_init,age_d,grid_divs)
         grid_lim= np.amax(x)
         setax(self.ax,grid_lim)
@@ -134,14 +144,11 @@ class GasGrid():
         cbar.ax.tick_params(labelsize=13)
         
         self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
-        #self.figure_canvas.draw()
+       
 
 
-    def update_gasgrid(self,frame,value):
+    def update_gasgrid(self,frame,params):
         
-        
-        
-         #print(value)
          try: 
              self.figure_canvas.get_tk_widget().pack_forget()
          except AttributeError: 
@@ -150,16 +157,11 @@ class GasGrid():
         
          ###GET ALL SLIDER VALUES HERE
          
+ 
+         x,y,z,d = make_Grid(params[0],params[1],params[2],age_d,grid_divs)
          
-        
-         x,y,z,d = make_Grid(value,Rrat_init,rho_index_init,age_d,grid_divs)
-         
 
-         grid_lim= np.amax(x)
-         #setax(self.ax,grid_lim)
-
-
-           
+         grid_lim= np.amax(x) 
          l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
                
 
@@ -168,46 +170,9 @@ class GasGrid():
   
     
 
-
-'''
-class Buttons(tk.Frame):
-    def __init__(self):
-        self.button = tk.Button(
-                text="Click me!",
-                width=25,
-                height=5,
-                bg="blue",
-                fg="yellow",
-                )
-
+#class Plotting_window():
     
 
-
-class DamoclesApplication(tk.Frame):
-    def __init__(self, parent, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.parent = parent
-        parent.geometry("2000x1500")
-        self.parent.button1 = Buttons()
-        
-
-       # self.greet_button = Button(master, text="Greet", command=self.greet)
-       # self.greet_button.pack()
-
-#        self.close_button = Button(master, text="Close", command=master.quit)
- #       self.close_button.pack()
-
-
-
-
-
-root = tk.Tk()
-DamoclesApplication(root).pack(side="top", fill="both", expand=True)
-root.mainloop()
-
-#setting up main tkinter window
-#matplotlib.use("TkAgg")
-'''
 
 
 
@@ -361,19 +326,12 @@ if __name__ == '__main__':
   #print("OUT OF EVENT",r_slider.slider.get())
   #print("OUT OF EVENT",md_slider.slider.get())
   
-  #
-  #DamoclesInput.make_slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
-  #DamoclesInput.make_slider
-  #DamoclesInput.make_slider(frame_1,rho_index_init,(-6, 6),"\u03B2",0.01)
-  #DamoclesInput.make_slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'",0.001) #THIS IS IN A LOG SCALE
-  #DamoclesInput.make_slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BCm)',0.001)
-  
+
   
   
   GasGrid = GasGrid(frame_2)
   GasGrid.initialise_grid_axis(frame_2)
-  #GasGrid.update_gasgrid(frame_2)
-  
+
 
   frame_1.place(x=950,y=550)
   frame_2.place(x=1050,y=10)
