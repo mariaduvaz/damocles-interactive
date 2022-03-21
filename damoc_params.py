@@ -12,29 +12,28 @@ import tkinter.font as TkFont
 import os
 import damocleslib as model
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import matplotlib
-import sys
-import fileinput
-from FUNCTIONS import *
-from mpl_toolkits import mplot3d
-import matplotlib.gridspec as gridspec
-import numpy as np
-from matplotlib.figure import Figure
-#from matplotlib.widgets import Slider,Button,CheckButtons,TextBox
-from matplotlib.artist import Artist
 matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg,
     NavigationToolbar2Tk
 )
+import sys
+import fileinput
+from FUNCTIONS import *
+from mpl_toolkits import mplot3d
+import numpy as np
 
+#from matplotlib.widgets import Slider,Button,CheckButtons,TextBox
+from matplotlib.artist import Artist
+from matplotlib.figure import Figure
 ###
 
 
 class Slider():
     def __init__(self,frame,init_val,range_vals,var_name,step_size):
-    #def make_slider(self,frame,init_val,range_vals,var_name,step_size):
+ 
         self.var_name = var_name
         self.sliderfont = TkFont.Font(family='bitstream charter', size=15)
         self.lab = tk.Label(frame,text=self.var_name,font=self.sliderfont)
@@ -44,21 +43,25 @@ class Slider():
         self.lab.pack(fill='x', padx=1)      
         self.slider.pack()
         self.frame=frame
-        #print(self.slider.get())
-         
-    
+
     def slider_command(self,event):
        
         slider_vals = []
         for child_widget in self.frame.winfo_children():
 	          if child_widget.winfo_class() == 'Scale':
     	            slider_vals.append(child_widget.get())
-    
-        print(slider_vals)
-        GasGrid.update_gasgrid(frame_2,slider_vals)
         
-       # model.run_damocles_wrap() 
-     
+        #de-log the dust mass and grain size values
+        slider_vals[3] = 10**(slider_vals[3])
+        slider_vals[4] = 10**(slider_vals[4])
+        
+        #pass all slider values upon a slider change 
+        GasGrid.update_gasgrid(frame_2,slider_vals)
+        DamoclesInput.update_damocfile_input(slider_vals)
+        #run damocles after sliders have been changed and input files have been changed with slider values
+        model.run_damocles_wrap() 
+        Plotting_window.plot_model(frame_3)
+        
     
         
 class DamoclesInput():
@@ -77,8 +80,7 @@ class DamoclesInput():
         amc_button = tk.Checkbutton(frame, text="AmC?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Amc(confirmation),bg='red',
                                     activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
         amc_button.pack(fill='x')
-        #amc_button.pack()
-   
+ 
     
     def make_clump_button(self,frame):
         
@@ -86,7 +88,7 @@ class DamoclesInput():
         clump_button = tk.Checkbutton(frame, text="Clump?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Clump(confirmation),bg='red',
                                       activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
         clump_button.pack(fill='x')
-    
+            
     
     def is_Amc(self,conf):
       fi3 = fileinput.FileInput(files=(self.spec_file),inplace=True)
@@ -120,12 +122,33 @@ class DamoclesInput():
                  line=replace_str('0.0',0,line)         
              sys.stdout.write(line)
       fi2.close()
+    
+    def update_damocfile_input(self,params):
+         #writing values we've updated to shell version of damocles 
+         fi2 = fileinput.FileInput(files=(self.dust_file,self.spec_file),inplace=True)
+         for line in fi2:	
+             if 'max dust velocity' in line:
+                 line=replace_str(params[0],0,line)
+             if 'Rin/Rout' in line:
+                 line=replace_str(params[1],0,line)
+             if 'rho~r^-q' in line:
+                 line=replace_str(params[2],0,line)
+             if 'Total dust mass' in line:
+                 line=replace_str(params[3],0,line)
+             if  'dustData' in line:
+                 line=replace_str(params[4],3,line)
+                 line=replace_str(params[4],4,line)     
+             sys.stdout.write(line)
+         fi2.close()
         
+        
+        
+     
 
 class GasGrid():
     
     def __init__(self,frame):
-        self.fig = Figure(figsize=(8, 6), dpi=100)
+        self.fig = Figure(figsize=(8.5, 5.3), dpi=100)
         self.ax = self.fig.add_subplot(111, projection='3d')
         self.figure_canvas= FigureCanvasTkAgg(self.fig,frame)
     
@@ -133,10 +156,10 @@ class GasGrid():
     def initialise_grid_axis(self,frame):
         
         #plotting initial grid made by specified initial parameter values and setting up color-bar scale and axis 
+        
         x,y,z,d = make_Grid(v_max_init,Rrat_init,rho_index_init,age_d,grid_divs)
         grid_lim= np.amax(x)
         setax(self.ax,grid_lim)
-
 
         l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
         cbar = self.fig.colorbar(l)
@@ -153,29 +176,82 @@ class GasGrid():
              self.figure_canvas.get_tk_widget().pack_forget()
          except AttributeError: 
             pass 
-        
-        
-         ###GET ALL SLIDER VALUES HERE
-         
- 
+    
          x,y,z,d = make_Grid(params[0],params[1],params[2],age_d,grid_divs)
-         
-
+        
          grid_lim= np.amax(x) 
          l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
                
-
          self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
          self.figure_canvas.draw()
   
     
 
-#class Plotting_window():
+class Plotting_window():
+     def __init__(self,frame):
+        self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
+        self.fig = Figure(figsize=(8, 9), dpi=100)
+ 
+        self.figure_canvas= FigureCanvasTkAgg(self.fig,frame)
+        self.outfile = path + "/output/integrated_line_profile_binned.out"
+        self.mod_prop_file = path + "/output/model_properties.out"
+        self.obswav,self.obsflux= datafile_2_array(obsfile,isint=False,zipped=True)
+
+         
+     def initialise_plotwindow(self,frame):
+  
+          
+          self.obswav,self.obsflux = trim_wav_flux(self.obswav,self.obsflux,trim_lims[0],trim_lims[1])
+
+          obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
+          lam_o= (1.0+z_red)*wavelength_peak_1*10.0
+          obsvels = convert_wav_to_vel(self.obswav,lam_o,wavelength_peak_1*10.0)
+          trim_lims_vel = convert_wav_to_vel(trim_lims,lam_o,wavelength_peak_1*10.0)
+          
+          self.ax = self.fig.add_subplot(111)
+          self.ax.axes.set_xlabel("Velocity km/s",fontsize=20)
+          self.ax.axes.set_ylabel("Brightness",fontsize=20)
+          self.ax.tick_params(axis='both', which='major',labelsize=20)
+          self.ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
+          self.ax.plot(obsvels,self.obsflux) 
+          self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
+      
     
-
-
-
-
+     def plot_model(self,frame):
+         
+          vel,flux,flux_e= datafile_2_array(self.outfile,isint=False,zipped=True)
+          flux = [i * np.amax(self.obsflux)/np.amax(flux) for i in flux]
+          self.ax.plot(vel,flux) 
+          self.figure_canvas.draw()
+   
+        #  self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
+      
+          
+          #file that tells you tau and chi sq
+          #props = datafile_2_array(mod_prop,isint=False,zipped=False)
+         
+     def make_reset_button(self,frame):
+        reset_button = tk.Button(frame, text="Reset",command=lambda: self.clear_pane(frame),bg='blue',
+                                    activebackground='grey',font=self.buttonfont,borderwidth=5)
+        reset_button.pack(fill='x')
+ 
+     def clear_pane(self,frame):
+         self.fig.clear() #clear your figure
+         self.initialise_plotwindow(frame)
+         #self.figure_canvas.draw_idle()
+         
+      
+        # try: 
+        #     self.figure_canvas.get_tk_widget().pack_forget()
+        # except AttributeError: 
+      #      pass 
+         #self.figure_canvas.
+       
+         #self.ax = self.fig.add_subplot(111)
+         
+            
+            #self.initialise_plotwindow(frame)
+        
 #################################################################################################################################################
 ##########################################  PARAMETERS TO BE SPECIFIED BEFORE RUNNING CODE          #############################################
 ##########################################  These parameters are parsed to the damocles input files #############################################
@@ -214,7 +290,7 @@ age_d = 778
 ##no of grid cells in x,y,z direction used to make the spherical shell model in damocles
 grid_divs = 20   
 #no of photon packets w. which to run simulation. more packets = more time for each simulation to run and higher SNR model line profile
-phot_no = 70000
+phot_no = 30000
 
 
 
@@ -243,7 +319,7 @@ speclines = datafile_2_array(spec_file,isint=False,zipped=False)
 ###########################################################################################
 
 #line needs to be removed, this is just for particular example spec of ipt14hls as continuum needs to be moved down
-obsflux = [i-4.2e-17 for i in obsflux]
+#obsflux = [i-4.2e-17 for i in obsflux]
 
 
 #calculate observational uncert on input spectrum using background regions provided
@@ -315,27 +391,25 @@ if __name__ == '__main__':
   DamoclesInput = DamoclesInput()
   DamoclesInput.make_amc_button(frame_1)
   DamoclesInput.make_clump_button(frame_1)
-  #frame_1.pack(side=tk.LEFT)
   
   v_slider = Slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
   r_slider = Slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
   rho_slider = Slider(frame_1,rho_index_init,(-6, 6),"\u03B2",0.01)
   md_slider = Slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'",0.001)
   gs_slider = Slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BCm)',0.001)
-  
-  #print("OUT OF EVENT",r_slider.slider.get())
-  #print("OUT OF EVENT",md_slider.slider.get())
-  
 
   
   
   GasGrid = GasGrid(frame_2)
   GasGrid.initialise_grid_axis(frame_2)
-
+  
+  Plotting_window = Plotting_window(frame_3)
+  Plotting_window.initialise_plotwindow(frame_3)
+  Plotting_window.make_reset_button(frame_3)
 
   frame_1.place(x=950,y=550)
-  frame_2.place(x=1050,y=10)
-  frame_3.pack()
+  frame_2.place(x=1000,y=5)
+  frame_3.place(x=100,y=10)
 
   rootwindow.mainloop()
 
@@ -369,7 +443,7 @@ ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
 plt.plot(obsvels,obsflux)
 
 ########################################################################################################################################################
-##########setting environment parameters and creating widgets for the 3D grid and sliders plotting window #############
+            ##########setting environment parameters and creating widgets for the 3D grid and sliders plotting window #############
 ########################################################################################################################################################
 
 
@@ -518,22 +592,7 @@ def update(val):
   l= ax.scatter(x,y,z,c=d,cmap="nipy_spectral") # update the plot
   
   
-  #writing values we've updated to shell version of damocles 
-  fi2 = fileinput.FileInput(files=(dust_file,spec_file),inplace=True)
-  for line in fi2:	
-    if 'max dust velocity' in line:
-     line=replace_str(newv,0,line)
-    if 'Rin/Rout' in line:
-     line=replace_str(newr,0,line)
-    if 'rho~r^-q' in line:
-     line=replace_str(newrho,0,line)
-    if 'Total dust mass' in line:
-     line=replace_str(newdm,0,line)
-    if  'dustData' in line:
-          line=replace_str(newgs,3,line)
-          line=replace_str(newgs,4,line)     
-    sys.stdout.write(line)
-  fi2.close()
+
 
 
 
