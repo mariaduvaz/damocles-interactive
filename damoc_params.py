@@ -61,6 +61,9 @@ class Slider():
         #run damocles after sliders have been changed and input files have been changed with slider values
         model.run_damocles_wrap() 
         Plotting_window.plot_model(frame_3)
+        Plotting_window.update_tautextbox(frame_4)
+        Plotting_window.update_chitextbox(frame_4)
+
         
     
         
@@ -165,7 +168,7 @@ class GasGrid():
         cbar = self.fig.colorbar(l)
         cbar.set_label('density', rotation=270,size=18,labelpad=20)
         cbar.ax.tick_params(labelsize=13)
-        
+        self.fig.tight_layout()
         self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
        
 
@@ -188,22 +191,32 @@ class GasGrid():
     
 
 class Plotting_window():
-     def __init__(self,frame):
-        self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
-        self.fig = Figure(figsize=(8, 9), dpi=100)
- 
-        self.figure_canvas= FigureCanvasTkAgg(self.fig,frame)
+     def __init__(self,frame_a,frame_b,frame_c):
+        self.buttonfont = TkFont.Font(family='bitstream charter', size=16)
+        
+        self.fig = Figure(figsize=(7.5, 7.7), dpi=100)
+        self.figure_canvas= FigureCanvasTkAgg(self.fig,frame_a)
         self.outfile = path + "/output/integrated_line_profile_binned.out"
         self.mod_prop_file = path + "/output/model_properties.out"
+        
         self.obswav,self.obsflux= datafile_2_array(obsfile,isint=False,zipped=True)
-
+        self.obswav,self.obsflux = trim_wav_flux(self.obswav,self.obsflux,trim_lims[0],trim_lims[1])
+        self.obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
+        
+        
+        tk.Label(frame_b,text = 'Optical depth (\u03C4) ',font=self.buttonfont).pack(anchor='w',side=tk.LEFT)
+        self.tau_text = tk.Text(frame_b,height=2,width=20,font=self.buttonfont)
+        self.tau_text.pack(anchor='w',side=tk.LEFT)
+        
+        tk.Label(frame_b,text = '\u03A7^2: ',font=self.buttonfont).pack(side=tk.LEFT)
+        self.chi_text = tk.Text(frame_b,height=2,width=20,font=self.buttonfont)
+        self.chi_text.pack(side=tk.LEFT)
+        
+        
          
      def initialise_plotwindow(self,frame):
-  
+           
           
-          self.obswav,self.obsflux = trim_wav_flux(self.obswav,self.obsflux,trim_lims[0],trim_lims[1])
-
-          obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
           lam_o= (1.0+z_red)*wavelength_peak_1*10.0
           obsvels = convert_wav_to_vel(self.obswav,lam_o,wavelength_peak_1*10.0)
           trim_lims_vel = convert_wav_to_vel(trim_lims,lam_o,wavelength_peak_1*10.0)
@@ -214,43 +227,60 @@ class Plotting_window():
           self.ax.tick_params(axis='both', which='major',labelsize=20)
           self.ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
           self.ax.plot(obsvels,self.obsflux) 
-          self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
+          self.fig.tight_layout()
+          self.figure_canvas.get_tk_widget().pack(fill='x', expand=1)
       
     
      def plot_model(self,frame):
          
-          vel,flux,flux_e= datafile_2_array(self.outfile,isint=False,zipped=True)
-          flux = [i * np.amax(self.obsflux)/np.amax(flux) for i in flux]
-          self.ax.plot(vel,flux) 
+          modvel,modflux,modflux_e= datafile_2_array(self.outfile,isint=False,zipped=True)
+          modflux= [i * np.amax(self.obsflux)/np.amax(modflux) for i in modflux]
+          self.ax.plot(modvel,modflux) 
           self.figure_canvas.draw()
-   
-        #  self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
-      
-          
-          #file that tells you tau and chi sq
-          #props = datafile_2_array(mod_prop,isint=False,zipped=False)
-         
+            
      def make_reset_button(self,frame):
-        reset_button = tk.Button(frame, text="Reset",command=lambda: self.clear_pane(frame),bg='blue',
-                                    activebackground='grey',font=self.buttonfont,borderwidth=5)
-        reset_button.pack(fill='x')
- 
+         
+        reset_button = tk.Button(frame, text="Reset",command=lambda: self.clear_pane(frame),bg='orange',
+                                 activebackground='grey',font=self.buttonfont,borderwidth=5)
+        reset_button.pack(fill='x',side=tk.BOTTOM,anchor='s')
+     
+     def make_model_scalebox(self,frame):
+            labelText=tk.StringVar()
+            labelText.set("Scale model by:")
+            labelDir= tk.Label(frame, textvariable=labelText, height=3,font=self.buttonfont)
+            labelDir.pack(fill='x',side=tk.LEFT,padx='20',pady='10')
+         
+            scale_var = tk.StringVar()
+            scale_var.trace("w", self.scalebox_command(scale_var))
+            
+            scale_var_entry = tk.Entry(frame, textvariable=scale_var,font=self.buttonfont)
+            scale_var_entry.pack(fill = 'x', side=tk.LEFT, padx='20',pady='10')
+     
+     def scalebox_command(self,var):
+         print("hi")
+         #print(var.get())
+     
      def clear_pane(self,frame):
          self.fig.clear() #clear your figure
          self.initialise_plotwindow(frame)
-         #self.figure_canvas.draw_idle()
          
-      
-        # try: 
-        #     self.figure_canvas.get_tk_widget().pack_forget()
-        # except AttributeError: 
-      #      pass 
-         #self.figure_canvas.
-       
-         #self.ax = self.fig.add_subplot(111)
+     def update_tautextbox(self,frame):
+         props = datafile_2_array(self.mod_prop_file,isint=False,zipped=False)   
+         for i in props:      
+             if 'optical' in i and 'depth' in i and 'wavelength' in i and 'cell' not in i and '(absn)' not in i:
+                 tau = i[-1]
          
-            
-            #self.initialise_plotwindow(frame)
+         self.tau_text.delete(1.0,4.0)
+         self.tau_text.insert(tk.END,str(tau))
+
+         
+     def update_chitextbox(self,frame):
+         
+         modvel,modflux,modflux_e= datafile_2_array(self.outfile,isint=False,zipped=True)
+         chi = chi_sq(self.obsflux,modflux,obs_err,modflux_e) 
+         chi = round(chi,2)
+         self.chi_text.delete(1.0,6.0)
+         self.chi_text.insert(tk.END,str(chi))
         
 #################################################################################################################################################
 ##########################################  PARAMETERS TO BE SPECIFIED BEFORE RUNNING CODE          #############################################
@@ -277,11 +307,11 @@ doublet_ratio = 3.13
 
 #These are our default model parameters values for the sliders
 
-v_max_init=4130  #maximum velocity at edge of shell
+v_max_init = 4130  #maximum velocity at edge of shell
 Rrat_init = 0.27 #radius of inner shell boundary divided by ratio of outer shell. Determines how 'thick' your gas shell is
 rho_index_init=1.32   #density is proportional to radius^(-rho_index)
-mdust_init=4.6e-05        #mass of dust in solar masses
-grain_size_init=0.12    #size of dust grain in microns
+mdust_init=-5.0        #mass of dust in solar masses
+grain_size_init=-0.4    #size of dust grain in microns
 
 
 
@@ -383,10 +413,14 @@ fi.close()
 if __name__ == '__main__':
   rootwindow = tk.Tk()
   rootwindow.geometry("2000x1500")
+  rootwindow['bg'] = 'blue'
   
-  frame_1 = tk.Frame(bg='blue',padx=20,pady=10)#height=50,width=50)
+  
   frame_2 = tk.Frame(height=50,width=50)
+  frame_1 = tk.Frame()#height=50,width=50)
   frame_3 = tk.Frame()
+  frame_4 = tk.Frame()
+  frame_5 = tk.Frame()
   
   DamoclesInput = DamoclesInput()
   DamoclesInput.make_amc_button(frame_1)
@@ -394,8 +428,8 @@ if __name__ == '__main__':
   
   v_slider = Slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
   r_slider = Slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
-  rho_slider = Slider(frame_1,rho_index_init,(-6, 6),"\u03B2",0.01)
-  md_slider = Slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M$\odot$)'",0.001)
+  rho_slider = Slider(frame_1,rho_index_init,(-6, 6),"Density index (\u03B2)",0.01)
+  md_slider = Slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M\u2609)'",0.001)
   gs_slider = Slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BCm)',0.001)
 
   
@@ -403,13 +437,17 @@ if __name__ == '__main__':
   GasGrid = GasGrid(frame_2)
   GasGrid.initialise_grid_axis(frame_2)
   
-  Plotting_window = Plotting_window(frame_3)
+  Plotting_window = Plotting_window(frame_3,frame_4,frame_5)
   Plotting_window.initialise_plotwindow(frame_3)
   Plotting_window.make_reset_button(frame_3)
+  Plotting_window.make_model_scalebox(frame_5)
 
-  frame_1.place(x=950,y=550)
-  frame_2.place(x=1000,y=5)
+  frame_1.place(x=950,y=530)
+  frame_2.place(x=980,y=0) 
   frame_3.place(x=100,y=10)
+  frame_4.place(x=100,y=850)
+  frame_5.place(x=220,y=905)
+  
 
   rootwindow.mainloop()
 
