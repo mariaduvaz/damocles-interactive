@@ -16,8 +16,9 @@ import sys
 
 import re
 import os
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import sys
+import fileinput
 ####read in data file and split each column into arrays!! 
 
 
@@ -292,36 +293,5 @@ def chi_sq(obs_flux,mod_flux,obs_err,mod_err):
         print("observed and modelled flux arrays need to be same length to perform chi sq calculation")
         
 
-def is_Amc(conf):
-      fi3 = fileinput.FileInput(files=(spec_file),inplace=True)
 
-      if conf.get() == True: 
-          for line in fi3:	           
-            if  'dustData' in line:                 
-                 line=fn.replace_str('\'dustData/amC-zb1.nk\'',1,line)
-            sys.stdout.write(line)     
-            
-      else:
-         for line in fi3:	
-             if  'dustData' in line:
-                 line=fn.replace_str('\'dustData/sil-dlee.nk\'',1,line)        
-             sys.stdout.write(line)
-      fi3.close()
-      
-      
-def is_Clump(conf): 
-      fi2 = fileinput.FileInput(files=(dust_file),inplace=True)
-      
-      if conf.get() == True:        
-          for line in fi2:	             
-            if  'fraction' in line:                
-                 line=fn.replace_str('1.0',0,line)
-            sys.stdout.write(line)     
-            
-      else:
-         for line in fi2:	
-             if  'fraction' in line:
-                 line=fn.replace_str('0.0',0,line)         
-             sys.stdout.write(line)
-      fi2.close()
       
