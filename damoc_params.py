@@ -65,15 +65,38 @@ class Slider():
         
 class DamoclesInput():
     
-    "This class contains all functions and variables which use the GUI to set the input parameters which are passed to the DAMOCLES code"
+    "This class contains all functions and variables which pass input parameters to the DAMOCLES code"
     
     def __init__(self):
         self.spec_file = "input/species.in"
         self.dust_file = "input/dust.in"
         self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
         
+        self.obswav_init,self.obsflux_init= datafile_2_array(obsfile,isint=False,zipped=True)
+        self.obswav,self.obsflux = trim_wav_flux(self.obswav_init,self.obsflux_init,trim_lims[0],trim_lims[1])
+        self.obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
+        self.obsflux = [i-0.4e-16 for i in self.obsflux]
+        self.obsvels = convert_wav_to_vel(self.obswav,(1+z_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10)
 
+  
+        self.obs_err = self.get_obserr()
+        self.write_obsfile_out()
+        
+        
+    def get_obserr(self):
+            #calculate observational uncert on input spectrum using background regions provided
+                bg_vels,bg_flux = trim_wav_flux(self.obswav_init,self.obsflux_init,bg_lims[0],bg_lims[1])
+                return np.std(bg_flux)
     
+    def write_obsfile_out(self):
+    #write observed line to line.out file, which is used to do rebin the damocles model 
+        filey = open(path+"/input/line.in",'w')
+        filey.write(str(len(self.obsflux))+ " " + str(self.obs_err) + "\n")
+        for j in range(len(self.obsflux)):    
+                        filey.write(str(self.obsvels[j]) + ' ' + str(self.obsflux[j]) + "\n")
+        filey.close()
+
+
     
     def make_clump_button(self,frame):
         
@@ -83,8 +106,7 @@ class DamoclesInput():
         clump_button.pack(fill='x')
             
 
-      
-      
+           
     def is_Clump(self,conf): 
       fi2 = fileinput.FileInput(files=(self.dust_file),inplace=True)
       
@@ -101,8 +123,9 @@ class DamoclesInput():
              sys.stdout.write(line)
       fi2.close()
     
+    
     def update_damocfile_input(self,params):
-         #writing values we've updated to shell version of damocles 
+         #writing values we've updated via sliders (where params comes from) to shell version of damocles 
          fi2 = fileinput.FileInput(files=(self.dust_file,self.spec_file),inplace=True)
          for line in fi2:	
              if 'max dust velocity' in line:
@@ -122,6 +145,30 @@ class DamoclesInput():
                   line=replace_str(str(float(1-params[5])),2,line)
              sys.stdout.write(line)
          fi2.close()
+         
+    def initialise_damocfile_input(self):
+        fi = fileinput.FileInput(files=(input_file,dust_file,gas_file,spec_file),inplace=True)
+        for line in fi:
+            if 'day' in line:
+                line=replace_str(age_d,0,line)
+            if  'number of photons' in line:
+                line=replace_str(phot_no,0,line)
+            if  'total flux of line to scale model' in line:
+                line=replace_str(str(np.amax(self.obsflux)*60),0,line)
+            if 'doublet?' in line:
+                line=replace_str(is_doublet,0,line)
+            if "first doublet component" in line:
+                line=replace_str(wavelength_peak_1,0,line)
+            if "second doublet component" in line:
+                line=replace_str(wavelength_peak_2,0,line)
+       #unless otherwise specified via the interactive button, the default dust distribition is smooth
+            if  'fraction in clumps' in line:                
+                     line=replace_str('0.0',0,line)
+                    
+      
+            sys.stdout.write(line)  
+
+        fi.close()   
         
         
         
@@ -232,13 +279,12 @@ class Plotting_window():
         
         self.fig = Figure(figsize=(7.5, 7.7), dpi=100)
         self.figure_canvas= FigureCanvasTkAgg(self.fig,frame_a)
+        self.toolbar = NavigationToolbar2Tk(self.figure_canvas, frame_a)
+        self.toolbar.update()
         self.outfile = path + "/output/integrated_line_profile_binned.out"
         self.mod_prop_file = path + "/output/model_properties.out"
         
-        self.obswav,self.obsflux= datafile_2_array(obsfile,isint=False,zipped=True)
-        self.obswav,self.obsflux = trim_wav_flux(self.obswav,self.obsflux,trim_lims[0],trim_lims[1])
-        self.obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
-        self.obsflux = [i-0.4e-16 for i in obsflux]
+        
         
         
         tk.Label(frame_b,text = 'Optical depth (\u03C4) ',font=self.buttonfont).pack(anchor='w',side=tk.LEFT)
@@ -248,22 +294,21 @@ class Plotting_window():
         tk.Label(frame_b,text = '\u03A7^2: ',font=self.buttonfont).pack(side=tk.LEFT)
         self.chi_text = tk.Text(frame_b,height=2,width=20,font=self.buttonfont)
         self.chi_text.pack(side=tk.LEFT)
+       
         
         
          
      def initialise_plotwindow(self,frame):
            
-          
-          lam_o= (1.0+z_red)*wavelength_peak_1*10.0
-          obsvels = convert_wav_to_vel(self.obswav,lam_o,wavelength_peak_1*10.0)
-          trim_lims_vel = convert_wav_to_vel(trim_lims,lam_o,wavelength_peak_1*10.0)
+
+          trim_lims_vel = convert_wav_to_vel(trim_lims,(1+z_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10.0)
           
           self.ax = self.fig.add_subplot(111)
           self.ax.axes.set_xlabel("Velocity km/s",fontsize=20)
           self.ax.axes.set_ylabel("Brightness",fontsize=20)
           self.ax.tick_params(axis='both', which='major',labelsize=20)
           self.ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
-          self.ax.plot(obsvels,self.obsflux) 
+          self.ax.plot(DamoclesInput.obsvels,DamoclesInput.obsflux) 
           self.fig.tight_layout()
           self.figure_canvas.get_tk_widget().pack(fill='x', expand=1)
       
@@ -271,7 +316,7 @@ class Plotting_window():
      def plot_model(self,frame):
          
           modvel,modflux,modflux_e = datafile_2_array(self.outfile,isint=False,zipped=True)
-          modflux= [i * np.amax(self.obsflux)/np.amax(modflux) for i in modflux]
+          modflux= [i * np.amax(DamoclesInput.obsflux)/np.amax(modflux) for i in modflux]
           self.ax.plot(modvel,modflux) 
           self.figure_canvas.draw()
             
@@ -292,9 +337,9 @@ class Plotting_window():
             def scalebox_command(var):
                 sf = float(scale_var.get())
                 modvel,modflux,modflux_e = datafile_2_array(self.outfile,isint=False,zipped=True)
-                modflux= [i * np.amax(self.obsflux)/np.amax(modflux) * sf for i in modflux]
+                modflux= [i * np.amax(DamoclesInput.obsflux)/np.amax(modflux) * sf for i in modflux]
                 
-                chi = chi_sq(self.obsflux,modflux,obs_err,modflux_e) 
+                chi = chi_sq(DamoclesInput.obsflux,modflux,DamoclesInput.obs_err,modflux_e) 
                 chi = round(chi,2)
                 self.chi_text.delete(1.0,6.0)
                 self.chi_text.insert(tk.END,str(chi))
@@ -306,8 +351,6 @@ class Plotting_window():
             scale_var_entry.bind("<Return>", scalebox_command)   
             scale_var_entry.pack(fill = 'x', side=tk.LEFT, padx='20',pady='10')
   
-     
-
 
      def clear_pane(self,frame):
          self.fig.clear() #clear your figure
@@ -326,7 +369,7 @@ class Plotting_window():
      def update_chitextbox(self,frame):
          
          modvel,modflux,modflux_e= datafile_2_array(self.outfile,isint=False,zipped=True)
-         chi = chi_sq(self.obsflux,modflux,obs_err,modflux_e) 
+         chi = chi_sq(DamoclesInput.obsflux,modflux,DamoclesInput.obs_err,modflux_e) 
          chi = round(chi,2)
          self.chi_text.delete(1.0,6.0)
          self.chi_text.insert(tk.END,str(chi))
@@ -386,7 +429,7 @@ dust_file = "input/dust.in"
 gas_file = "input/gas.in"
 spec_file = "input/species.in"
 
-obswav,obsflux= datafile_2_array(obsfile,isint=False,zipped=True)
+
 inlines = datafile_2_array(input_file,isint=False,zipped=False)
 dustlines = datafile_2_array(dust_file,isint=False,zipped=False)
 gaslines = datafile_2_array(gas_file,isint=False,zipped=False)
@@ -397,64 +440,8 @@ speclines = datafile_2_array(spec_file,isint=False,zipped=False)
 ######################## initial processing of observed spectrum  #########################
 ###########################################################################################
 
-#line needs to be removed, this is just for particular example spec of ipt14hls as continuum needs to be moved down
-#obsflux = [i-4.2e-17 for i in obsflux]
 
 
-#calculate observational uncert on input spectrum using background regions provided
-bg_vels,bg_flux = trim_wav_flux(obswav,obsflux,bg_lims[0],bg_lims[1])
-obs_err = np.std(bg_flux)
-
-
-####trim spectra to line you want
-obswav,obsflux = trim_wav_flux(obswav,obsflux,trim_lims[0],trim_lims[1])
-#snip out narrow line or contaminating region
-obsflux = snip_spect(obswav,obsflux,*snip_regs)
-
-#scale which models line profile peaks to roughly the same size, may need to be manually adjusted depending on SNR
-#####NEED TO CHECK WHETHER THIS VALUE CHANGES GIVEN CHANGING PHOTON NO 
-obs_scale = np.amax(obsflux)*60
-
-
-#convert from wavelength space to velocity space and correct for redshift of supernova's host galaxy
-lam_o= (1+z_red)*(wavelength_peak_1*10.0)
-obsvels = convert_wav_to_vel(obswav,lam_o,wavelength_peak_1*10)
-
-
-
-#write observed line to line.out file, which is used to do rebin the damocles model 
-filey = open(path+"/input/line.in",'w')
-filey.write(str(len(obsflux))+ " " + str(obs_err) + "\n")
-for j in range(len(obsflux)):    
-                    filey.write(str(obsvels[j]) + ' ' + str(obsflux[j]) + "\n")
-filey.close()
-
-
-
-#Replace fixed values in files in input fortran file 
-
-fi = fileinput.FileInput(files=(input_file,dust_file,gas_file,spec_file),inplace=True)
-for line in fi:
-   if 'day' in line:
-       line=replace_str(age_d,0,line)
-   if  'number of photons' in line:
-       line=replace_str(phot_no,0,line)
-   if  'total flux of line to scale model' in line:
-       line=replace_str(obs_scale,0,line)
-   if 'doublet?' in line:
-       line=replace_str(is_doublet,0,line)
-   if "first doublet component" in line:
-       line=replace_str(wavelength_peak_1,0,line)
-   if "second doublet component" in line:
-       line=replace_str(wavelength_peak_2,0,line)
-   #unless otherwise specified via the interactive button, the default dust distribition is smooth
-   if  'fraction in clumps' in line:                
-                 line=replace_str('0.0',0,line)
-                
-  
-   sys.stdout.write(line)  
-
-fi.close()
 
 
 
@@ -473,9 +460,10 @@ if __name__ == '__main__':
   frame_5 = tk.Frame()
   
   DamoclesInput = DamoclesInput()
+  DamoclesInput.initialise_damocfile_input()
   DamoclesInput.make_clump_button(frame_1)
   
-  
+  #create sliders for parameters that are changed by user
   v_slider = Slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
   r_slider = Slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
   rho_slider = Slider(frame_1,rho_index_init,(-6, 6),"Density index (\u03B2)",0.01)
