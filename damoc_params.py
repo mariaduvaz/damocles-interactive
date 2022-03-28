@@ -13,7 +13,6 @@ import os
 import damocleslib as model
 import numpy as np
 import matplotlib
-matplotlib.use('TkAgg')
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg,
     NavigationToolbar2Tk
@@ -48,6 +47,7 @@ class Slider():
     	            slider_vals.append(child_widget.get())
         
         #de-log the dust mass and grain size values
+        print(self.var_name)
         slider_vals[3] = 10**(slider_vals[3])
         slider_vals[4] = 10**(slider_vals[4])
         
@@ -73,13 +73,7 @@ class DamoclesInput():
         self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
         
 
-        
-    def make_amc_button(self,frame):
-        confirmation = tk.BooleanVar()
-        amc_button = tk.Checkbutton(frame, text="AmC?",variable=confirmation,onvalue='True',offvalue='False',command=lambda: self.is_Amc(confirmation),bg='red',
-                                    activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
-        amc_button.pack(fill='x')
- 
+    
     
     def make_clump_button(self,frame):
         
@@ -88,22 +82,7 @@ class DamoclesInput():
                                       activebackground='red',font=self.buttonfont,borderwidth=5,indicatoron=0)
         clump_button.pack(fill='x')
             
-    
-    def is_Amc(self,conf):
-      fi3 = fileinput.FileInput(files=(self.spec_file),inplace=True)
 
-      if conf.get() == True: 
-          for line in fi3:	           
-            if  'dustData' in line:                 
-                 line=replace_str('\'dustData/amC-zb1.nk\'',1,line)
-            sys.stdout.write(line)     
-            
-      else:
-         for line in fi3:	
-             if  'dustData' in line:
-                 line=replace_str('\'dustData/sil-dlee.nk\'',1,line)        
-             sys.stdout.write(line)
-      fi3.close()
       
       
     def is_Clump(self,conf): 
@@ -136,7 +115,11 @@ class DamoclesInput():
                  line=replace_str(params[3],0,line)
              if  'dustData' in line:
                  line=replace_str(params[4],3,line)
-                 line=replace_str(params[4],4,line)     
+                 line=replace_str(params[4],4,line)  
+             if  'amC' in line:
+                  line=replace_str(params[5],2,line)
+             if 'sil' in line:
+                  line=replace_str(str(float(1-params[5])),2,line)
              sys.stdout.write(line)
          fi2.close()
         
@@ -152,13 +135,70 @@ class GasGrid():
         self.figure_canvas= FigureCanvasTkAgg(self.fig,frame)
     
     
+    
+    def make_Grid(self,v_max,Rrat,rho_index,age,divno):
+	#creating a gridfile of the supernova here
+#where we have 4 1d arrays; a list of x,y,z and density points
+#this allows us to plot what the model looks like 
+
+        v_min = v_max * Rrat
+        Rout = v_max * age * 8.64e-6 * 1e15
+        Rin = v_min* age * 8.64e-6 * 1e15
+      
+        #grid divisions for a uniform grid
+        grid_arr = np.linspace(-Rout,Rout,divno)
+
+        #These values contain every point in a 40*40*40 grid from the limits of -Rout,Rout 
+        Y,X,Z = np.meshgrid(grid_arr,grid_arr,grid_arr) 
+        #turning these into 1d arrays
+        Xf = X.flatten()
+        Yf = Y.flatten()  
+        Zf = Z.flatten()
+        rads= [np.sqrt(Xf[i]**2 + Yf[i]**2 + Zf[i]**2) for i in range(len(Xf))]
+
+        rho = np.zeros((len(Xf)))
+
+
+        plotdens,plotx,ploty,plotz = [],[],[],[]
+
+	    #looping through radius of every grid point.
+	    #if rad is within Rout and Rin, set density using r^-(rho_index) law
+        for j in range(len(rads)):
+           if abs(rads[j]) <= Rout and abs(rads[j]) >= Rin:
+              if Xf[j] > 0 and Yf[j] > 0 and Zf[j] > 0:
+                 rho[j] = (abs(rads[j]))**(-rho_index)*1e20   #randomly rescaling the density to make it a reasonable number
+              else:
+	           
+                rho[j] = (abs(rads[j]))**(-rho_index)*1e20
+                plotdens.append(rho[j])
+                plotx.append(Xf[j])
+                ploty.append(Yf[j])
+                plotz.append(Zf[j])
+
+  
+        return plotx,ploty,plotz,plotdens
+
+
+
+    def setax(self,axis,g_s):
+       axis.view_init(elev=30, azim=50)
+       axis.set_xlabel('X axis (cm)')
+       axis.set_ylabel('Y axis (cm)')
+       axis.set_zlabel('Z axis (cm)')
+       axis.set_title("Model of gas distribution in a Supernova")
+       axis.set_xlim([-1.5*g_s,1.5*g_s])
+       axis.set_ylim([-1.5*g_s,1.5*g_s])
+       axis.set_zlim([-1.5*g_s,1.5*g_s])
+
+    
+    
     def initialise_grid_axis(self,frame):
         
         #plotting initial grid made by specified initial parameter values and setting up color-bar scale and axis 
         
-        x,y,z,d = make_Grid(v_max_init,Rrat_init,rho_index_init,age_d,grid_divs)
+        x,y,z,d = self.make_Grid(v_max_init,Rrat_init,rho_index_init,age_d,grid_divs)
         grid_lim= np.amax(x)
-        setax(self.ax,grid_lim)
+        self.setax(self.ax,grid_lim)
 
         l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
         cbar = self.fig.colorbar(l)
@@ -176,9 +216,9 @@ class GasGrid():
          except AttributeError: 
             pass 
     
-         x,y,z,d = make_Grid(params[0],params[1],params[2],age_d,grid_divs)
+         x,y,z,d = self.make_Grid(params[0],params[1],params[2],age_d,grid_divs)
         
-         grid_lim= np.amax(x) 
+          
          l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
                
          self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
@@ -410,10 +450,7 @@ for line in fi:
    #unless otherwise specified via the interactive button, the default dust distribition is smooth
    if  'fraction in clumps' in line:                
                  line=replace_str('0.0',0,line)
-                  
-   if  'dustData' in line:
-                 line=replace_str('\'dustData/sil-dlee.nk\'',1,line)        
-        
+                
   
    sys.stdout.write(line)  
 
@@ -430,21 +467,21 @@ if __name__ == '__main__':
   
   
   frame_2 = tk.Frame(height=50,width=50)
-  frame_1 = tk.Frame()#height=50,width=50)
+  frame_1 = tk.Frame()
   frame_3 = tk.Frame()
   frame_4 = tk.Frame()
   frame_5 = tk.Frame()
   
   DamoclesInput = DamoclesInput()
-  DamoclesInput.make_amc_button(frame_1)
   DamoclesInput.make_clump_button(frame_1)
+  
   
   v_slider = Slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
   r_slider = Slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
   rho_slider = Slider(frame_1,rho_index_init,(-6, 6),"Density index (\u03B2)",0.01)
-  md_slider = Slider(frame_1,mdust_init,(-5, 0.2),"'Dust mass (M\u2609)'",0.001)
-  gs_slider = Slider(frame_1,grain_size_init,(-2.3, 0.5),'Grain radius (\u03BCm)',0.001)
-
+  md_slider = Slider(frame_1,mdust_init,(-5, 0.2),"log(Dust mass (M\u2609))",0.001)
+  gs_slider = Slider(frame_1,grain_size_init,(-2.3, 0.5),'log(Grain radius (\u03BCm))',0.001)
+  amc_frac_slider = Slider(frame_1,0.0,(0.0,1.0),'AmC Fraction',0.01)
   
   
   GasGrid = GasGrid(frame_2)
@@ -454,11 +491,8 @@ if __name__ == '__main__':
   Plotting_window.initialise_plotwindow(frame_3)
   Plotting_window.make_reset_button(frame_3)
   Plotting_window.make_model_scalebox(frame_5)
-      
-  
-         #print(var.get())
 
-  frame_1.place(x=950,y=530)
+  frame_1.place(x=950,y=500)
   frame_2.place(x=980,y=0) 
   frame_3.place(x=100,y=10)
   frame_4.place(x=100,y=850)
