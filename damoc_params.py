@@ -30,9 +30,9 @@ class Slider():
     def __init__(self,frame,init_val,range_vals,var_name,step_size):
  
         self.var_name = var_name
-        self.sliderfont = TkFont.Font(family='bitstream charter', size=15)
+        self.sliderfont = TkFont.Font(family='bitstream charter', size=14)
         self.lab = tk.Label(frame,text=self.var_name,font=self.sliderfont)
-        self.slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=18,length=900,font=self.sliderfont)      
+        self.slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=17,length=900,font=self.sliderfont)      
         self.slider.set(init_val)
         self.slider.bind("<ButtonRelease-1>", self.slider_command)      
         self.lab.pack(fill='x', padx=1)      
@@ -75,7 +75,7 @@ class DamoclesInput():
         self.obswav_init,self.obsflux_init= datafile_2_array(obsfile,isint=False,zipped=True)
         self.obswav,self.obsflux = trim_wav_flux(self.obswav_init,self.obsflux_init,trim_lims[0],trim_lims[1])
         self.obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
-        self.obsflux = [i-0.4e-16 for i in self.obsflux]
+        #self.obsflux = [i-0.4e-16 for i in self.obsflux]
         self.obsvels = convert_wav_to_vel(self.obswav,(1+z_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10)
 
   
@@ -383,7 +383,7 @@ class Plotting_window():
 z_red=0.034
 
 #trim_lims determine the limits of wavelength space where your line profile is at. 
-trim_lims = (6650,6950)
+trim_lims = (6650,7050)
 #choose an area of continuum in the spectra where there is no emission features in velocity space. the standard dev of flux in this region gives observational uncertainty which is used in the chi sq calculation
 bg_lims = (5809,6300)
 #specify a list here of regions in the line profile where there could be contaminating features also in wavelength space which you could remove
@@ -400,10 +400,10 @@ doublet_ratio = 3.13
 #These are our default model parameters values for the sliders
 
 v_max_init = 4130  #maximum velocity at edge of shell
-Rrat_init = 0.27 #radius of inner shell boundary divided by ratio of outer shell. Determines how 'thick' your gas shell is
-rho_index_init=1.32   #density is proportional to radius^(-rho_index)
+Rrat_init = 0.29 #radius of inner shell boundary divided by ratio of outer shell. Determines how 'thick' your gas shell is
+rho_index_init=1.15   #density is proportional to radius^(-rho_index)
 mdust_init=-5.0        #mass of dust in solar masses
-grain_size_init=-0.4    #size of dust grain in microns
+grain_size_init=-1.62    #size of dust grain in microns
 
 
 
@@ -423,7 +423,7 @@ phot_no = 30000
 
 path = os.path.dirname(os.path.realpath(__file__))
 
-obsfile ="iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF.ascii"
+obsfile ="iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF_contsub.ascii"
 input_file = "input/input.in"
 dust_file = "input/dust.in"
 gas_file = "input/gas.in"
@@ -467,7 +467,7 @@ if __name__ == '__main__':
   v_slider = Slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
   r_slider = Slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
   rho_slider = Slider(frame_1,rho_index_init,(-6, 6),"Density index (\u03B2)",0.01)
-  md_slider = Slider(frame_1,mdust_init,(-5, 0.2),"log(Dust mass (M\u2609))",0.001)
+  md_slider = Slider(frame_1,mdust_init,(-9, 0.2),"log(Dust mass (M\u2609))",0.001)
   gs_slider = Slider(frame_1,grain_size_init,(-2.3, 0.5),'log(Grain radius (\u03BCm))',0.001)
   amc_frac_slider = Slider(frame_1,0.0,(0.0,1.0),'AmC Fraction',0.01)
   
@@ -480,11 +480,11 @@ if __name__ == '__main__':
   Plotting_window.make_reset_button(frame_3)
   Plotting_window.make_model_scalebox(frame_5)
 
-  frame_1.place(x=950,y=500)
+  frame_1.place(x=950,y=515)
   frame_2.place(x=980,y=0) 
   frame_3.place(x=100,y=10)
-  frame_4.place(x=100,y=850)
-  frame_5.place(x=220,y=905)
+  frame_4.place(x=105,y=865)
+  frame_5.place(x=235,y=920)
   
 
   rootwindow.mainloop()
