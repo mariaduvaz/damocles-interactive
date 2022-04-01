@@ -7,7 +7,8 @@ Created on Wed Dec 29 14:58:36 2021
 """
 import tkinter as tk
 import tkinter.font as TkFont
-
+from mazzyfuncts import spectra_stuff,FUNCTIONS,ASTROCONSTANTS
+from spectra_stuff import Model_spect
 
 import os
 import damocleslib as model
@@ -282,10 +283,7 @@ class Plotting_window():
         self.toolbar = NavigationToolbar2Tk(self.figure_canvas, frame_a)
         self.toolbar.update()
         self.outfile = path + "/output/integrated_line_profile_binned.out"
-        self.mod_prop_file = path + "/output/model_properties.out"
-        
-        
-        
+        self.mod_prop_file = path + "/output/model_properties.out" 
         
         tk.Label(frame_b,text = 'Optical depth (\u03C4) ',font=self.buttonfont).pack(anchor='w',side=tk.LEFT)
         self.tau_text = tk.Text(frame_b,height=2,width=20,font=self.buttonfont)
@@ -304,8 +302,8 @@ class Plotting_window():
           trim_lims_vel = convert_wav_to_vel(trim_lims,(1+z_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10.0)
           
           self.ax = self.fig.add_subplot(111)
-          self.ax.axes.set_xlabel("Velocity km/s",fontsize=20)
-          self.ax.axes.set_ylabel("Brightness",fontsize=20)
+          self.ax.axes.set_xlabel("Velocity (km/s)",fontsize=20)
+          self.ax.axes.set_ylabel("Flux ($ergs$  $cm^{-2}$  $s^{-1}$  $\AA^{-1}$)",fontsize=20)
           self.ax.tick_params(axis='both', which='major',labelsize=20)
           self.ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
           self.ax.plot(DamoclesInput.obsvels,DamoclesInput.obsflux) 
@@ -316,7 +314,12 @@ class Plotting_window():
      def plot_model(self,frame):
          
           modvel,modflux,modflux_e = datafile_2_array(self.outfile,isint=False,zipped=True)
+          modflux = convolve_spectra(res_kms, modvel,modflux)
           modflux= [i * np.amax(DamoclesInput.obsflux)/np.amax(modflux) for i in modflux]
+          
+          self.ax.text(np.amax(modvel)/2,Line.text_high1,Line.line_id_lab,fontsize=22)
+          self.ax.text(np.amax(modvel)/2,Line.text_high2,Line.dust_type_lab,fontsize=22)           
+          self.ax.text(np.amax(modvel)/2,Line.text_high1+(Line.text_high1-Line.text_high2),"iPTF14hls d"+str(age_d),fontsize=22)
           self.ax.plot(modvel,modflux) 
           self.figure_canvas.draw()
             
@@ -338,7 +341,7 @@ class Plotting_window():
                 sf = float(scale_var.get())
                 modvel,modflux,modflux_e = datafile_2_array(self.outfile,isint=False,zipped=True)
                 modflux= [i * np.amax(DamoclesInput.obsflux)/np.amax(modflux) * sf for i in modflux]
-                
+                modflux = convolve_spectra(res_kms, modvel,modflux)
                 chi = chi_sq(DamoclesInput.obsflux,modflux,DamoclesInput.obs_err,modflux_e) 
                 chi = round(chi,2)
                 self.chi_text.delete(1.0,6.0)
@@ -369,6 +372,7 @@ class Plotting_window():
      def update_chitextbox(self,frame):
          
          modvel,modflux,modflux_e= datafile_2_array(self.outfile,isint=False,zipped=True)
+         modflux = convolve_spectra(res_kms, modvel,modflux)
          chi = chi_sq(DamoclesInput.obsflux,modflux,DamoclesInput.obs_err,modflux_e) 
          chi = round(chi,2)
          self.chi_text.delete(1.0,6.0)
@@ -379,8 +383,12 @@ class Plotting_window():
 ##########################################  These parameters are parsed to the damocles input files #############################################
 #################################################################################################################################################
 
+Line = Model_spect('ha',"Ha 6563$\AA$","100% sil clump","iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF.ascii","models/ha-sil-clump-d778",6563,-4.2e-17,1.75,1.9,752,5.6e-16,5.3e-16,-0.5e-17,6.4e-16,(),(-8000,8000))
+
 #specify redshift of object here
 z_red=0.034
+SN_name = 'iPTF14hls'
+Line_name = 'Ha'
 
 #trim_lims determine the limits of wavelength space where your line profile is at. 
 trim_lims = (6650,7050)
@@ -397,13 +405,18 @@ wavelength_peak_1= 656.3
 wavelength_peak_2= 732.39 
 doublet_ratio = 3.13
 
+#specify resoln
+resolution= 10.0
+res_kms = resolution/(wavelength_peak_1*10) * 299792 
+print(res_kms)
+
 #These are our default model parameters values for the sliders
 
 v_max_init = 4130  #maximum velocity at edge of shell
-Rrat_init = 0.29 #radius of inner shell boundary divided by ratio of outer shell. Determines how 'thick' your gas shell is
-rho_index_init=1.15   #density is proportional to radius^(-rho_index)
-mdust_init=-5.0        #mass of dust in solar masses
-grain_size_init=-1.62    #size of dust grain in microns
+Rrat_init = 0.31 #radius of inner shell boundary divided by ratio of outer shell. Determines how 'thick' your gas shell is
+rho_index_init=1.330   #density is proportional to radius^(-rho_index)
+mdust_init=-3.67       #mass of dust in solar masses
+grain_size_init=-1.235    #size of dust grain in microns
 
 
 
