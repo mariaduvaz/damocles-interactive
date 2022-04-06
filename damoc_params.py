@@ -7,8 +7,6 @@ Created on Wed Dec 29 14:58:36 2021
 """
 import tkinter as tk
 import tkinter.font as TkFont
-from mazzyfuncts import spectra_stuff,FUNCTIONS,ASTROCONSTANTS
-from spectra_stuff import Model_spect
 
 import os
 import damocleslib as model
@@ -28,38 +26,43 @@ from matplotlib.figure import Figure
 
 
 class Slider():
-    def __init__(self,frame,init_val,range_vals,var_name,step_size):
+    def __init__(self,frame_a,frame_b,frame_c,frame_d,init_val,range_vals,var_name,step_size):
+        
+       
  
         self.var_name = var_name
         self.sliderfont = TkFont.Font(family='bitstream charter', size=14)
-        self.lab = tk.Label(frame,text=self.var_name,font=self.sliderfont)
-        self.slider = tk.Scale(frame,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=17,length=900,font=self.sliderfont)      
+        self.lab = tk.Label(frame_a,text=self.var_name,font=self.sliderfont)
+        self.slider = tk.Scale(frame_a,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=17,length=900,font=self.sliderfont)      
         self.slider.set(init_val)
         self.slider.bind("<ButtonRelease-1>", self.slider_command)      
         self.lab.pack(fill='x', padx=1)      
         self.slider.pack()
-        self.frame=frame
+        self.frame_a=frame_a
+        self.frame_b=frame_b
+        self.frame_c=frame_c
+        self.frame_d=frame_d
 
     def slider_command(self,event):
        
         slider_vals = []
-        for child_widget in self.frame.winfo_children():
+        for child_widget in self.frame_a.winfo_children():
 	          if child_widget.winfo_class() == 'Scale':
     	            slider_vals.append(child_widget.get())
         
         #de-log the dust mass and grain size values
-        print(self.var_name)
+  
         slider_vals[3] = 10**(slider_vals[3])
         slider_vals[4] = 10**(slider_vals[4])
         
         #pass all slider values upon a slider change 
-        GasGrid.update_gasgrid(frame_2,slider_vals)
+        GasGrid.update_gasgrid(self.frame_b,slider_vals)
         DamoclesInput.update_damocfile_input(slider_vals)
         #run damocles after sliders have been changed and input files have been changed with slider values
         model.run_damocles_wrap() 
-        Plotting_window.plot_model(frame_3)
-        Plotting_window.update_tautextbox(frame_4)
-        Plotting_window.update_chitextbox(frame_4)
+        Plotting_window.plot_model(self.frame_c)
+        Plotting_window.update_tautextbox(self.frame_d)
+        Plotting_window.update_chitextbox(self.frame_d)
 
         
     
@@ -77,7 +80,7 @@ class DamoclesInput():
         self.obswav,self.obsflux = trim_wav_flux(self.obswav_init,self.obsflux_init,trim_lims[0],trim_lims[1])
         self.obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
         #self.obsflux = [i-0.4e-16 for i in self.obsflux]
-        self.obsvels = convert_wav_to_vel(self.obswav,(1+z_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10)
+        self.obsvels = convert_wav_to_vel(self.obswav,(1+G_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10)
 
   
         self.obs_err = self.get_obserr()
@@ -274,23 +277,28 @@ class GasGrid():
   
     
 
-class Plotting_window():
+class Plotting_window(DamoclesInput):
      def __init__(self,frame_a,frame_b,frame_c):
+        self.frame_a = frame_a
+        self.frame_b = frame_b
+        self.frame_c = frame_c
+        
+        self.DamoclesInput =DamoclesInput()
         self.buttonfont = TkFont.Font(family='bitstream charter', size=16)
         
         self.fig = Figure(figsize=(7.5, 7.7), dpi=100)
-        self.figure_canvas= FigureCanvasTkAgg(self.fig,frame_a)
-        self.toolbar = NavigationToolbar2Tk(self.figure_canvas, frame_a)
+        self.figure_canvas= FigureCanvasTkAgg(self.fig,self.frame_a)
+        self.toolbar = NavigationToolbar2Tk(self.figure_canvas, self.frame_a)
         self.toolbar.update()
         self.outfile = path + "/output/integrated_line_profile_binned.out"
         self.mod_prop_file = path + "/output/model_properties.out" 
         
-        tk.Label(frame_b,text = 'Optical depth (\u03C4) ',font=self.buttonfont).pack(anchor='w',side=tk.LEFT)
-        self.tau_text = tk.Text(frame_b,height=2,width=20,font=self.buttonfont)
+        tk.Label(self.frame_b,text = 'Optical depth (\u03C4) ',font=self.buttonfont).pack(anchor='w',side=tk.LEFT)
+        self.tau_text = tk.Text(self.frame_b,height=2,width=20,font=self.buttonfont)
         self.tau_text.pack(anchor='w',side=tk.LEFT)
         
-        tk.Label(frame_b,text = '\u03A7^2: ',font=self.buttonfont).pack(side=tk.LEFT)
-        self.chi_text = tk.Text(frame_b,height=2,width=20,font=self.buttonfont)
+        tk.Label(self.frame_b,text = '\u03A7^2: ',font=self.buttonfont).pack(side=tk.LEFT)
+        self.chi_text = tk.Text(self.frame_b,height=2,width=20,font=self.buttonfont)
         self.chi_text.pack(side=tk.LEFT)
        
         
@@ -298,15 +306,15 @@ class Plotting_window():
          
      def initialise_plotwindow(self,frame):
            
-
-          trim_lims_vel = convert_wav_to_vel(trim_lims,(1+z_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10.0)
+         # print("PLOT WINDOW",)
+          trim_lims_vel = convert_wav_to_vel(trim_lims,(1+G_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10.0)
           
           self.ax = self.fig.add_subplot(111)
           self.ax.axes.set_xlabel("Velocity (km/s)",fontsize=20)
           self.ax.axes.set_ylabel("Flux ($ergs$  $cm^{-2}$  $s^{-1}$  $\AA^{-1}$)",fontsize=20)
           self.ax.tick_params(axis='both', which='major',labelsize=20)
           self.ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
-          self.ax.plot(DamoclesInput.obsvels,DamoclesInput.obsflux) 
+          self.ax.plot(self.DamoclesInput.obsvels,self.DamoclesInput.obsflux) 
           self.fig.tight_layout()
           self.figure_canvas.get_tk_widget().pack(fill='x', expand=1)
       
@@ -314,12 +322,12 @@ class Plotting_window():
      def plot_model(self,frame):
          
           modvel,modflux,modflux_e = datafile_2_array(self.outfile,isint=False,zipped=True)
-          modflux = convolve_spectra(res_kms, modvel,modflux)
+          #modflux = convolve_spectra(res_kms, modvel,modflux)
           modflux= [i * np.amax(DamoclesInput.obsflux)/np.amax(modflux) for i in modflux]
           
-          self.ax.text(np.amax(modvel)/2,Line.text_high1,Line.line_id_lab,fontsize=22)
-          self.ax.text(np.amax(modvel)/2,Line.text_high2,Line.dust_type_lab,fontsize=22)           
-          self.ax.text(np.amax(modvel)/2,Line.text_high1+(Line.text_high1-Line.text_high2),"iPTF14hls d"+str(age_d),fontsize=22)
+          #self.ax.text(np.amax(modvel)/2,Line.text_high1,Line.line_id_lab,fontsize=22)
+          #self.ax.text(np.amax(modvel)/2,Line.text_high2,Line.dust_type_lab,fontsize=22)           
+          #self.ax.text(np.amax(modvel)/2,Line.text_high1+(Line.text_high1-Line.text_high2),"iPTF14hls d"+str(age_d),fontsize=22)
           self.ax.plot(modvel,modflux) 
           self.figure_canvas.draw()
             
@@ -341,7 +349,7 @@ class Plotting_window():
                 sf = float(scale_var.get())
                 modvel,modflux,modflux_e = datafile_2_array(self.outfile,isint=False,zipped=True)
                 modflux= [i * np.amax(DamoclesInput.obsflux)/np.amax(modflux) * sf for i in modflux]
-                modflux = convolve_spectra(res_kms, modvel,modflux)
+               # modflux = convolve_spectra(res_kms, modvel,modflux)
                 chi = chi_sq(DamoclesInput.obsflux,modflux,DamoclesInput.obs_err,modflux_e) 
                 chi = round(chi,2)
                 self.chi_text.delete(1.0,6.0)
@@ -350,7 +358,7 @@ class Plotting_window():
                 self.ax.plot(modvel,modflux) 
                 self.figure_canvas.draw()
             
-            scale_var_entry = tk.Entry(frame_5, textvariable=scale_var)
+            scale_var_entry = tk.Entry(self.frame_c, textvariable=scale_var)
             scale_var_entry.bind("<Return>", scalebox_command)   
             scale_var_entry.pack(fill = 'x', side=tk.LEFT, padx='20',pady='10')
   
@@ -372,21 +380,118 @@ class Plotting_window():
      def update_chitextbox(self,frame):
          
          modvel,modflux,modflux_e= datafile_2_array(self.outfile,isint=False,zipped=True)
-         modflux = convolve_spectra(res_kms, modvel,modflux)
+         #modflux = convolve_spectra(res_kms, modvel,modflux)
          chi = chi_sq(DamoclesInput.obsflux,modflux,DamoclesInput.obs_err,modflux_e) 
          chi = round(chi,2)
          self.chi_text.delete(1.0,6.0)
          self.chi_text.insert(tk.END,str(chi))
+  
         
+  
+class InputWindow(tk.Tk):
+    def __init__(self):
+      
+       super().__init__()
+       self.geometry('500x800')
+       self.z_var = tk.DoubleVar(value=0.0)
+       self.start_vars = {}
+       self.make_label_entry("Host Redshift:")
+       
+    def make_label_entry(self,label_name):
+       
+       labelText=tk.StringVar()
+       labelText.set(label_name)
+       labelDir= tk.Label(self, textvariable=labelText, height=3)
+       labelDir.pack(side=tk.LEFT)
+       
+       
+       def entry_command(dummy):
+              self.start_vars[label_name]= self.z_var.get()
+              print("DICKT",self.start_vars)
+            
+       
+       z_entry = tk.Entry(self, textvariable=self.z_var)
+       z_entry.bind("<Return>", entry_command)   
+       z_entry.pack(fill = 'x', side=tk.LEFT, padx='20',pady='10')
+         
+
+       # Button to be clicked which opens up modelling app when fields are complete
+       tk.Button(self,
+               text='Open modelling app',
+               command=self.open_window).pack(side=tk.BOTTOM,expand=True)
+    
+    def open_window(self):
+      
+      window = App(self)
+      window.grab_set()
+      
+    
+    
+class App(tk.Toplevel,GasGrid,Slider,Plotting_window):
+    def __init__(self,parent):
+      
+        super().__init__(parent)
+        
+        print("IN APP",InputWindow.start_vars)
+        self.geometry("2000x1500")
+        self['bg'] = 'blue'
+        #print("PASSED TO APP",self.start_vars)
+        
+        
+        frame_2 = tk.Frame(self)
+        frame_1 = tk.Frame(self)
+        frame_3 = tk.Frame(self)
+        frame_4 = tk.Frame(self)
+        frame_5 = tk.Frame(self)
+        
+        frame_2.pack()
+        frame_1.pack()
+        frame_3.pack()
+        frame_4.pack()
+        frame_5.pack()
+ 
+        
+        
+        self.DamoclesInput = DamoclesInput()
+        self.GasGrid = GasGrid(frame_2)
+        
+        self.Plotting_window = Plotting_window(frame_3,frame_4,frame_5)
+       
+        
+        self.DamoclesInput.initialise_damocfile_input()
+        self.DamoclesInput.make_clump_button(frame_1)
+        
+        #create sliders for parameters that are changed by user
+        v_slider = Slider(frame_1,frame_2,frame_3,frame_4,v_max_init,(1000, 15000),"Vmax (km/s)",1)
+        r_slider = Slider(frame_1,frame_2,frame_3,frame_4,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
+        rho_slider = Slider(frame_1,frame_2,frame_3,frame_4,rho_index_init,(-6, 6),"Density index (\u03B2)",0.01)
+        md_slider = Slider(frame_1,frame_2,frame_3,frame_4,mdust_init,(-9, 0.2),"log(Dust mass (M\u2609))",0.001)
+        gs_slider = Slider(frame_1,frame_2,frame_3,frame_4,grain_size_init,(-2.3, 0.5),'log(Grain radius (\u03BCm))',0.001)
+        amc_frac_slider = Slider(frame_1,frame_2,frame_3,frame_4,0.0,(0.0,1.0),'AmC Fraction',0.01)
+        
+        
+        self.GasGrid.initialise_grid_axis(frame_2)
+       
+        self.Plotting_window.initialise_plotwindow(frame_3)
+        self.Plotting_window.make_reset_button(frame_3)
+        self.Plotting_window.make_model_scalebox(frame_5)
+        
+        frame_1.place(x=950,y=515)
+        frame_2.place(x=980,y=0) 
+        frame_3.place(x=100,y=10)
+        frame_4.place(x=105,y=865)
+        frame_5.place(x=235,y=920)
+        
+    
 #################################################################################################################################################
 ##########################################  PARAMETERS TO BE SPECIFIED BEFORE RUNNING CODE          #############################################
 ##########################################  These parameters are parsed to the damocles input files #############################################
 #################################################################################################################################################
 
-Line = Model_spect('ha',"Ha 6563$\AA$","100% sil clump","iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF.ascii","models/ha-sil-clump-d778",6563,-4.2e-17,1.75,1.9,752,5.6e-16,5.3e-16,-0.5e-17,6.4e-16,(),(-8000,8000))
+#Line = Model_spect('ha',"Ha 6563$\AA$","100% sil clump","iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF.ascii","models/ha-sil-clump-d778",6563,-4.2e-17,1.75,1.9,752,5.6e-16,5.3e-16,-0.5e-17,6.4e-16,(),(-8000,8000))
 
 #specify redshift of object here
-z_red=0.034
+G_red=0.034
 SN_name = 'iPTF14hls'
 Line_name = 'Ha'
 
@@ -408,7 +513,6 @@ doublet_ratio = 3.13
 #specify resoln
 resolution= 10.0
 res_kms = resolution/(wavelength_peak_1*10) * 299792 
-print(res_kms)
 
 #These are our default model parameters values for the sliders
 
@@ -461,6 +565,12 @@ speclines = datafile_2_array(spec_file,isint=False,zipped=False)
 
 
 if __name__ == '__main__':
+  
+  InputWindow = InputWindow()
+  InputWindow.mainloop()
+  
+  
+'''
   rootwindow = tk.Tk()
   rootwindow.geometry("2000x1500")
   rootwindow['bg'] = 'blue'
@@ -501,3 +611,4 @@ if __name__ == '__main__':
   
 
   rootwindow.mainloop()
+'''
