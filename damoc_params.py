@@ -306,7 +306,7 @@ class Plotting_window(DamoclesInput):
          
      def initialise_plotwindow(self,frame):
            
-         # print("PLOT WINDOW",)
+          print("PLOT WINDOW",)
           trim_lims_vel = convert_wav_to_vel(trim_lims,(1+G_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10.0)
           
           self.ax = self.fig.add_subplot(111)
@@ -390,38 +390,60 @@ class Plotting_window(DamoclesInput):
   
 class InputWindow(tk.Tk):
     def __init__(self):
-      
+       
        super().__init__()
        self.geometry('500x800')
-       self.z_var = tk.DoubleVar(value=0.0)
-       self.start_vars = {}
-       self.make_label_entry("Host Redshift:")
        
-    def make_label_entry(self,label_name):
+       self.z_var = tk.DoubleVar(value=0.0)
+       self.SN_name = tk.StringVar()
+       self.Line_name = tk.StringVar()
+       self.bg_lims = tk.StringVar()
+       self.trim_lims = tk.StringVar()
+       self.snip_reg = tk.StringVar()
+       self.is_doublet= tk.StringVar(value="false")
+       self.wavelength_peak_1= tk.DoubleVar(value=656.3) 
+       self.wavelength_peak_2= tk.DoubleVar(value=732.39) 
+       self.doublet_ratio = tk.DoubleVar(value=3.13)
+       self.resolution= tk.DoubleVar(value=10.0)
+       #age of supernova remnant at the time that observational data was taken, in days.
+       self.age_d = tk.DoubleVar(value=778)
+       ##no of grid cells in x,y,z direction used to make the spherical shell model in damocles
+       self.grid_divs = tk.IntVar(value=20)   
+       #no of photon packets w. which to run simulation. more packets = more time for each simulation to run and higher SNR model line profile
+       self.phot_no = tk.IntVar(value=30000)
+       
+       
+
+       self.start_vars = {"Host Redshift:": [self.z_var,None]}#,"SN name": ['iptf14hls',None]}
+       
+       for i in list(self.start_vars.keys()):
+           #print(i,self.start_vars.get(i)[0])
+           self.make_label_entry(i,self.start_vars.get(i)[0])
+       
+        
+      
+      # Button to be clicked which opens up modelling app when fields are complete
+       tk.Button(self,
+                 text='Open modelling app',
+                 command=self.open_window).pack(side=tk.BOTTOM,expand=True)
+       
+    def make_label_entry(self,labelname,variablename):
        
        labelText=tk.StringVar()
-       labelText.set(label_name)
+       labelText.set(labelname)
        labelDir= tk.Label(self, textvariable=labelText, height=3)
        labelDir.pack(side=tk.LEFT)
-       
-       
-       def entry_command(dummy):
-              self.start_vars[label_name]= self.z_var.get()
-              print("DICKT",self.start_vars)
-            
-       
-       z_entry = tk.Entry(self, textvariable=self.z_var)
-       z_entry.bind("<Return>", entry_command)   
+      
+       z_entry = tk.Entry(self, textvariable=variablename)
        z_entry.pack(fill = 'x', side=tk.LEFT, padx='20',pady='10')
          
 
-       # Button to be clicked which opens up modelling app when fields are complete
-       tk.Button(self,
-               text='Open modelling app',
-               command=self.open_window).pack(side=tk.BOTTOM,expand=True)
+     
     
-    def open_window(self):
-      
+    def open_window(self,event=None):
+      for i in list(self.start_vars.keys()):
+          self.start_vars.get(i)[1] = self.start_vars.get(i)[0].get()
+      print(self.start_vars)
       window = App(self)
       window.grab_set()
       
@@ -435,8 +457,7 @@ class App(tk.Toplevel,GasGrid,Slider,Plotting_window):
         print("IN APP",InputWindow.start_vars)
         self.geometry("2000x1500")
         self['bg'] = 'blue'
-        #print("PASSED TO APP",self.start_vars)
-        
+ 
         
         frame_2 = tk.Frame(self)
         frame_1 = tk.Frame(self)
@@ -513,7 +534,7 @@ doublet_ratio = 3.13
 #specify resoln
 resolution= 10.0
 res_kms = resolution/(wavelength_peak_1*10) * 299792 
-
+print(res_kms)
 #These are our default model parameters values for the sliders
 
 v_max_init = 4130  #maximum velocity at edge of shell
