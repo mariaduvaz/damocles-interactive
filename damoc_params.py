@@ -72,20 +72,29 @@ class DamoclesInput():
     "This class contains all functions and variables which pass input parameters to the DAMOCLES code"
     
     def __init__(self):
+        self.z = InputWindow.start_vars["Host Redshift"][1]
+        self.wavelength_peak_1 = InputWindow.start_vars["Lab. wavelength peak 1 (A)"][1]
+        self.wavelength_peak_2 = InputWindow.start_vars["Lab. wavelength peak 2 (A)"][1]
+        self.age_d = InputWindow.start_vars["SN age (days)"][1]
+        
+        self.input_file = "input/input.in"
         self.spec_file = "input/species.in"
         self.dust_file = "input/dust.in"
+        self.gas_file = "input/gas.in"
+        
         self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
         
         self.obswav_init,self.obsflux_init= datafile_2_array(obsfile,isint=False,zipped=True)
         self.obswav,self.obsflux = trim_wav_flux(self.obswav_init,self.obsflux_init,trim_lims[0],trim_lims[1])
         self.obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
         #self.obsflux = [i-0.4e-16 for i in self.obsflux]
-        self.obsvels = convert_wav_to_vel(self.obswav,(1+G_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10)
+        self.obsvels = convert_wav_to_vel(self.obswav,(1+self.z)*(self.wavelength_peak_1*10.0),self.wavelength_peak_1*10)
 
   
         self.obs_err = self.get_obserr()
         self.write_obsfile_out()
         
+       
         
     def get_obserr(self):
             #calculate observational uncert on input spectrum using background regions provided
@@ -151,10 +160,14 @@ class DamoclesInput():
          fi2.close()
          
     def initialise_damocfile_input(self):
-        fi = fileinput.FileInput(files=(input_file,dust_file,gas_file,spec_file),inplace=True)
+        phot_no = InputWindow.start_vars['Photon packet number'][1] 
+        is_doublet = InputWindow.start_vars["Doublet?"][1]
+     
+        fi = fileinput.FileInput(files=(self.input_file,self.dust_file,self.gas_file,self.spec_file),inplace=True)
+        
         for line in fi:
             if 'day' in line:
-                line=replace_str(age_d,0,line)
+                line=replace_str(self.age_d,0,line)
             if  'number of photons' in line:
                 line=replace_str(phot_no,0,line)
             if  'total flux of line to scale model' in line:
@@ -162,14 +175,13 @@ class DamoclesInput():
             if 'doublet?' in line:
                 line=replace_str(is_doublet,0,line)
             if "first doublet component" in line:
-                line=replace_str(wavelength_peak_1,0,line)
+                line=replace_str(self.wavelength_peak_1,0,line)
             if "second doublet component" in line:
-                line=replace_str(wavelength_peak_2,0,line)
+                line=replace_str(self.wavelength_peak_2,0,line)
        #unless otherwise specified via the interactive button, the default dust distribition is smooth
             if  'fraction in clumps' in line:                
                      line=replace_str('0.0',0,line)
-                    
-      
+                       
             sys.stdout.write(line)  
 
         fi.close()   
@@ -178,15 +190,17 @@ class DamoclesInput():
         
      
 
-class GasGrid():
+class GasGrid(DamoclesInput):
     
     def __init__(self,frame):
+        
+        self.DamoclesInput =DamoclesInput()
+        
         self.fig = Figure(figsize=(8.5, 5.3), dpi=100)
         self.ax = self.fig.add_subplot(111, projection='3d')
         self.figure_canvas= FigureCanvasTkAgg(self.fig,frame)
     
-    
-    
+        
     def make_Grid(self,v_max,Rrat,rho_index,age,divno):
 	#creating a gridfile of the supernova here
 #where we have 4 1d arrays; a list of x,y,z and density points
@@ -206,10 +220,8 @@ class GasGrid():
         Yf = Y.flatten()  
         Zf = Z.flatten()
         rads= [np.sqrt(Xf[i]**2 + Yf[i]**2 + Zf[i]**2) for i in range(len(Xf))]
-
         rho = np.zeros((len(Xf)))
-
-
+        
         plotdens,plotx,ploty,plotz = [],[],[],[]
 
 	    #looping through radius of every grid point.
@@ -226,7 +238,6 @@ class GasGrid():
                 ploty.append(Yf[j])
                 plotz.append(Zf[j])
 
-  
         return plotx,ploty,plotz,plotdens
 
 
@@ -247,7 +258,7 @@ class GasGrid():
         
         #plotting initial grid made by specified initial parameter values and setting up color-bar scale and axis 
         
-        x,y,z,d = self.make_Grid(v_max_init,Rrat_init,rho_index_init,age_d,grid_divs)
+        x,y,z,d = self.make_Grid(v_max_init,Rrat_init,rho_index_init,self.DamoclesInput.age_d,20)
         grid_lim= np.amax(x)
         self.setax(self.ax,grid_lim)
 
@@ -267,9 +278,7 @@ class GasGrid():
          except AttributeError: 
             pass 
     
-         x,y,z,d = self.make_Grid(params[0],params[1],params[2],age_d,grid_divs)
-        
-          
+         x,y,z,d = self.make_Grid(params[0],params[1],params[2],20) 
          l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
                
          self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
@@ -306,8 +315,8 @@ class Plotting_window(DamoclesInput):
          
      def initialise_plotwindow(self,frame):
            
-          print("PLOT WINDOW",)
-          trim_lims_vel = convert_wav_to_vel(trim_lims,(1+G_red)*(wavelength_peak_1*10.0),wavelength_peak_1*10.0)
+          self.res_kms = InputWindow.start_vars["Resolution (A)"][1]/(self.DamoclesInput.wavelength_peak_1*10) * 299792 
+          trim_lims_vel = convert_wav_to_vel(trim_lims,(1+self.DamoclesInput.z)*(self.DamoclesInput.wavelength_peak_1*10.0),self.DamoclesInput.wavelength_peak_1*10.0)
           
           self.ax = self.fig.add_subplot(111)
           self.ax.axes.set_xlabel("Velocity (km/s)",fontsize=20)
@@ -322,7 +331,7 @@ class Plotting_window(DamoclesInput):
      def plot_model(self,frame):
          
           modvel,modflux,modflux_e = datafile_2_array(self.outfile,isint=False,zipped=True)
-          #modflux = convolve_spectra(res_kms, modvel,modflux)
+          #modflux = convolve_spectra(self.res_kms, modvel,modflux)
           modflux= [i * np.amax(DamoclesInput.obsflux)/np.amax(modflux) for i in modflux]
           
           #self.ax.text(np.amax(modvel)/2,Line.text_high1,Line.line_id_lab,fontsize=22)
@@ -349,7 +358,7 @@ class Plotting_window(DamoclesInput):
                 sf = float(scale_var.get())
                 modvel,modflux,modflux_e = datafile_2_array(self.outfile,isint=False,zipped=True)
                 modflux= [i * np.amax(DamoclesInput.obsflux)/np.amax(modflux) * sf for i in modflux]
-               # modflux = convolve_spectra(res_kms, modvel,modflux)
+               # modflux = convolve_spectra(self.res_kms, modvel,modflux)
                 chi = chi_sq(DamoclesInput.obsflux,modflux,DamoclesInput.obs_err,modflux_e) 
                 chi = round(chi,2)
                 self.chi_text.delete(1.0,6.0)
@@ -380,7 +389,7 @@ class Plotting_window(DamoclesInput):
      def update_chitextbox(self,frame):
          
          modvel,modflux,modflux_e= datafile_2_array(self.outfile,isint=False,zipped=True)
-         #modflux = convolve_spectra(res_kms, modvel,modflux)
+         #modflux = convolve_spectra(self.res_kms, modvel,modflux)
          chi = chi_sq(DamoclesInput.obsflux,modflux,DamoclesInput.obs_err,modflux_e) 
          chi = round(chi,2)
          self.chi_text.delete(1.0,6.0)
@@ -394,6 +403,8 @@ class InputWindow(tk.Tk):
        super().__init__()
        self.geometry('500x800')
        
+       self.buttonfont = TkFont.Font(family='bitstream charter', size=16)
+       self.filename = tk.StringVar()
        self.z_var = tk.DoubleVar(value=0.0)
        self.SN_name = tk.StringVar()
        self.Line_name = tk.StringVar()
@@ -402,50 +413,63 @@ class InputWindow(tk.Tk):
        self.snip_reg = tk.StringVar()
        self.is_doublet= tk.StringVar(value="false")
        self.wavelength_peak_1= tk.DoubleVar(value=656.3) 
-       self.wavelength_peak_2= tk.DoubleVar(value=732.39) 
+       self.wavelength_peak_2= tk.DoubleVar(value=0.0) 
        self.doublet_ratio = tk.DoubleVar(value=3.13)
        self.resolution= tk.DoubleVar(value=10.0)
        #age of supernova remnant at the time that observational data was taken, in days.
        self.age_d = tk.DoubleVar(value=778)
-       ##no of grid cells in x,y,z direction used to make the spherical shell model in damocles
-       self.grid_divs = tk.IntVar(value=20)   
+       ##no of grid cells in x,y,z direction used to make the spherical shell model in damocles  
        #no of photon packets w. which to run simulation. more packets = more time for each simulation to run and higher SNR model line profile
        self.phot_no = tk.IntVar(value=30000)
        
        
 
-       self.start_vars = {"Host Redshift:": [self.z_var,None]}#,"SN name": ['iptf14hls',None]}
+       self.start_vars = {"Data Filename": [self.filename,None],"Host Redshift": [self.z_var,None],"SN name" : [self.SN_name,None],
+                          "Line name" : [self.Line_name,None], "Continuum region range (A)":[self.bg_lims,None],
+                          "Emission Line region range (A)":[self.trim_lims,None],
+                          "Snip region range (A)":[self.snip_reg,None], "Doublet?":[self.is_doublet,None],
+                          "Lab. wavelength peak 1 (A)":[self.wavelength_peak_1,None],"Lab. wavelength peak 2 (A)":[self.wavelength_peak_2,None],
+                          "Doublet ratio":[self.doublet_ratio,None],"Resolution (A)":[self.resolution,None],
+                          "SN age (days)":[self.age_d,None],
+                          "Photon packet number":[self.phot_no,None]}
        
+       count = 0
        for i in list(self.start_vars.keys()):
-           #print(i,self.start_vars.get(i)[0])
-           self.make_label_entry(i,self.start_vars.get(i)[0])
-       
+           self.make_label_entry(i,self.start_vars.get(i)[0],count)
+           count += 1
         
       
       # Button to be clicked which opens up modelling app when fields are complete
        tk.Button(self,
                  text='Open modelling app',
-                 command=self.open_window).pack(side=tk.BOTTOM,expand=True)
+                 command=self.open_window,font=self.buttonfont).place(x=200,y=600)
        
-    def make_label_entry(self,labelname,variablename):
+    def make_label_entry(self,labelname,variablename,label_no):
        
+       y_increm = 30 * label_no
        labelText=tk.StringVar()
-       labelText.set(labelname)
+       labelText.set(labelname + ": ")
        labelDir= tk.Label(self, textvariable=labelText, height=3)
-       labelDir.pack(side=tk.LEFT)
+       labelDir.place(x=50,y=100+y_increm)
       
        z_entry = tk.Entry(self, textvariable=variablename)
-       z_entry.pack(fill = 'x', side=tk.LEFT, padx='20',pady='10')
+       z_entry.place(x=300,y=110+y_increm)
          
 
      
     
     def open_window(self,event=None):
-      for i in list(self.start_vars.keys()):
-          self.start_vars.get(i)[1] = self.start_vars.get(i)[0].get()
-      print(self.start_vars)
-      window = App(self)
-      window.grab_set()
+        #upon pressing button to start app after entry fields have been filled,
+        #loop through the dictionary and collect values
+        print(self.start_vars)
+        
+        for i in list(self.start_vars.keys()):
+                
+                self.start_vars.get(i)[1] = self.start_vars.get(i)[0].get()
+      
+      
+        window = App(self)
+        window.grab_set()
       
     
     
@@ -509,12 +533,10 @@ class App(tk.Toplevel,GasGrid,Slider,Plotting_window):
 ##########################################  These parameters are parsed to the damocles input files #############################################
 #################################################################################################################################################
 
-#Line = Model_spect('ha',"Ha 6563$\AA$","100% sil clump","iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF.ascii","models/ha-sil-clump-d778",6563,-4.2e-17,1.75,1.9,752,5.6e-16,5.3e-16,-0.5e-17,6.4e-16,(),(-8000,8000))
 
-#specify redshift of object here
-G_red=0.034
-SN_name = 'iPTF14hls'
-Line_name = 'Ha'
+path = os.path.dirname(os.path.realpath(__file__))
+obsfile ="iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF_contsub.ascii"
+
 
 #trim_lims determine the limits of wavelength space where your line profile is at. 
 trim_lims = (6650,7050)
@@ -523,18 +545,14 @@ bg_lims = (5809,6300)
 #specify a list here of regions in the line profile where there could be contaminating features also in wavelength space which you could remove
 snip_regs = () 
 
-
 #put in the wavelength of the spectral line transition you want to create a model of in NANOMETRES
 #set this to true if you're modelling a doublet (two close together lines that have blended into each other like O2+ 4959,5007)
-is_doublet= "false"
-wavelength_peak_1= 656.3 
-wavelength_peak_2= 732.39 
 doublet_ratio = 3.13
 
 #specify resoln
-resolution= 10.0
-res_kms = resolution/(wavelength_peak_1*10) * 299792 
-print(res_kms)
+#resolution= 10.0
+#res_kms = resolution/(wavelength_peak_1*10) * 299792 
+#print(res_kms)
 #These are our default model parameters values for the sliders
 
 v_max_init = 4130  #maximum velocity at edge of shell
@@ -546,11 +564,11 @@ grain_size_init=-1.235    #size of dust grain in microns
 
 
 #age of supernova remnant at the time that observational data was taken, in days.
-age_d = 778  
+#age_d = 778  
 ##no of grid cells in x,y,z direction used to make the spherical shell model in damocles
-grid_divs = 20   
+#grid_divs = 20   
 #no of photon packets w. which to run simulation. more packets = more time for each simulation to run and higher SNR model line profile
-phot_no = 30000
+#phot_no = 30000
 
 
 
@@ -559,77 +577,13 @@ phot_no = 30000
 ##########################################
 
 
-path = os.path.dirname(os.path.realpath(__file__))
-
-obsfile ="iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF_contsub.ascii"
-input_file = "input/input.in"
-dust_file = "input/dust.in"
-gas_file = "input/gas.in"
-spec_file = "input/species.in"
-
-
-inlines = datafile_2_array(input_file,isint=False,zipped=False)
-dustlines = datafile_2_array(dust_file,isint=False,zipped=False)
-gaslines = datafile_2_array(gas_file,isint=False,zipped=False)
-speclines = datafile_2_array(spec_file,isint=False,zipped=False)
-
 
 ###########################################################################################
 ######################## initial processing of observed spectrum  #########################
 ###########################################################################################
 
 
-
-
-
-
-
-
 if __name__ == '__main__':
   
   InputWindow = InputWindow()
   InputWindow.mainloop()
-  
-  
-'''
-  rootwindow = tk.Tk()
-  rootwindow.geometry("2000x1500")
-  rootwindow['bg'] = 'blue'
-  
-  
-  frame_2 = tk.Frame(height=50,width=50)
-  frame_1 = tk.Frame()
-  frame_3 = tk.Frame()
-  frame_4 = tk.Frame()
-  frame_5 = tk.Frame()
-  
-  DamoclesInput = DamoclesInput()
-  DamoclesInput.initialise_damocfile_input()
-  DamoclesInput.make_clump_button(frame_1)
-  
-  #create sliders for parameters that are changed by user
-  v_slider = Slider(frame_1,v_max_init,(1000, 15000),"Vmax (km/s)",1)
-  r_slider = Slider(frame_1,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
-  rho_slider = Slider(frame_1,rho_index_init,(-6, 6),"Density index (\u03B2)",0.01)
-  md_slider = Slider(frame_1,mdust_init,(-9, 0.2),"log(Dust mass (M\u2609))",0.001)
-  gs_slider = Slider(frame_1,grain_size_init,(-2.3, 0.5),'log(Grain radius (\u03BCm))',0.001)
-  amc_frac_slider = Slider(frame_1,0.0,(0.0,1.0),'AmC Fraction',0.01)
-  
-  
-  GasGrid = GasGrid(frame_2)
-  GasGrid.initialise_grid_axis(frame_2)
-  
-  Plotting_window = Plotting_window(frame_3,frame_4,frame_5)
-  Plotting_window.initialise_plotwindow(frame_3)
-  Plotting_window.make_reset_button(frame_3)
-  Plotting_window.make_model_scalebox(frame_5)
-
-  frame_1.place(x=950,y=515)
-  frame_2.place(x=980,y=0) 
-  frame_3.place(x=100,y=10)
-  frame_4.place(x=105,y=865)
-  frame_5.place(x=235,y=920)
-  
-
-  rootwindow.mainloop()
-'''
