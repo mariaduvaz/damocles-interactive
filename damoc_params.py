@@ -25,45 +25,6 @@ from matplotlib.figure import Figure
 ###
 
 
-class Slider():
-    def __init__(self,frame_a,frame_b,frame_c,frame_d,init_val,range_vals,var_name,step_size):
-        
-       
- 
-        self.var_name = var_name
-        self.sliderfont = TkFont.Font(family='bitstream charter', size=14)
-        self.lab = tk.Label(frame_a,text=self.var_name,font=self.sliderfont)
-        self.slider = tk.Scale(frame_a,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=17,length=900,font=self.sliderfont)      
-        self.slider.set(init_val)
-        self.slider.bind("<ButtonRelease-1>", self.slider_command)      
-        self.lab.pack(fill='x', padx=1)      
-        self.slider.pack()
-        self.frame_a=frame_a
-        self.frame_b=frame_b
-        self.frame_c=frame_c
-        self.frame_d=frame_d
-
-    def slider_command(self,event):
-       
-        slider_vals = []
-        for child_widget in self.frame_a.winfo_children():
-	          if child_widget.winfo_class() == 'Scale':
-    	            slider_vals.append(child_widget.get())
-        
-        #de-log the dust mass and grain size values
-  
-        slider_vals[3] = 10**(slider_vals[3])
-        slider_vals[4] = 10**(slider_vals[4])
-        
-        #pass all slider values upon a slider change 
-        GasGrid.update_gasgrid(self.frame_b,slider_vals)
-        DamoclesInput.update_damocfile_input(slider_vals)
-        #run damocles after sliders have been changed and input files have been changed with slider values
-        model.run_damocles_wrap() 
-        Plotting_window.plot_model(self.frame_c)
-        Plotting_window.update_tautextbox(self.frame_d)
-        Plotting_window.update_chitextbox(self.frame_d)
-
         
     
         
@@ -72,6 +33,7 @@ class DamoclesInput():
     "This class contains all functions and variables which pass input parameters to the DAMOCLES code"
     
     def __init__(self):
+        
         self.z = InputWindow.start_vars["Host Redshift"][1]
         self.wavelength_peak_1 = InputWindow.start_vars["Lab. wavelength peak 1 (A)"][1]
         self.wavelength_peak_2 = InputWindow.start_vars["Lab. wavelength peak 2 (A)"][1]
@@ -89,7 +51,7 @@ class DamoclesInput():
         self.obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
         #self.obsflux = [i-0.4e-16 for i in self.obsflux]
         self.obsvels = convert_wav_to_vel(self.obswav,(1+self.z)*(self.wavelength_peak_1*10.0),self.wavelength_peak_1*10)
-
+        
   
         self.obs_err = self.get_obserr()
         self.write_obsfile_out()
@@ -270,7 +232,6 @@ class GasGrid(DamoclesInput):
         self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
        
 
-
     def update_gasgrid(self,frame,params):
         
          try: 
@@ -396,6 +357,49 @@ class Plotting_window(DamoclesInput):
          self.chi_text.insert(tk.END,str(chi))
   
         
+class Slider(DamoclesInput):
+    def __init__(self,frame_a,frame_b,frame_c,frame_d,init_val,range_vals,var_name,step_size):
+        
+     
+        #self.DamoclesInput = DamoclesInput()
+        #self.GasGrid = GasGrid(frame_b)
+        #self.Plotting_window = Plotting_window(frame_a, frame_b, frame_c)
+ 
+        self.var_name = var_name
+        self.sliderfont = TkFont.Font(family='bitstream charter', size=14)
+        self.lab = tk.Label(frame_a,text=self.var_name,font=self.sliderfont)
+        self.slider = tk.Scale(frame_a,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=17,length=900,font=self.sliderfont)      
+        self.slider.set(init_val)
+        self.slider.bind("<ButtonRelease-1>", self.slider_command)      
+        self.lab.pack(fill='x', padx=1)      
+        self.slider.pack()
+        self.frame_a=frame_a
+        self.frame_b=frame_b
+        self.frame_c=frame_c
+        self.frame_d=frame_d
+
+    def slider_command(self,event):
+       
+        slider_vals = []
+        for child_widget in self.frame_a.winfo_children():
+	          if child_widget.winfo_class() == 'Scale':
+    	            slider_vals.append(child_widget.get())
+        
+        #de-log the dust mass and grain size values
+  
+        slider_vals[3] = 10**(slider_vals[3])
+        slider_vals[4] = 10**(slider_vals[4])
+        
+        #pass all slider values upon a slider change 
+        GasGrid.update_gasgrid(self.frame_b,slider_vals)
+        DamoclesInput.update_damocfile_input(slider_vals)
+        #run damocles after sliders have been changed and input files have been changed with slider values
+        model.run_damocles_wrap() 
+        Plotting_window.plot_model(self.frame_c)
+        Plotting_window.update_tautextbox(self.frame_d)
+        Plotting_window.update_chitextbox(self.frame_d)
+
+
   
 class InputWindow(tk.Tk):
     def __init__(self):
@@ -461,7 +465,8 @@ class InputWindow(tk.Tk):
     def open_window(self,event=None):
         #upon pressing button to start app after entry fields have been filled,
         #loop through the dictionary and collect values
-        print(self.start_vars)
+        
+        #print(self.start_vars)
         
         for i in list(self.start_vars.keys()):
                 
@@ -478,7 +483,7 @@ class App(tk.Toplevel,GasGrid,Slider,Plotting_window):
       
         super().__init__(parent)
         
-        print("IN APP",InputWindow.start_vars)
+        #print("IN APP",InputWindow.start_vars)
         self.geometry("2000x1500")
         self['bg'] = 'blue'
  
@@ -501,7 +506,7 @@ class App(tk.Toplevel,GasGrid,Slider,Plotting_window):
         self.GasGrid = GasGrid(frame_2)
         
         self.Plotting_window = Plotting_window(frame_3,frame_4,frame_5)
-       
+        
         
         self.DamoclesInput.initialise_damocfile_input()
         self.DamoclesInput.make_clump_button(frame_1)
@@ -516,7 +521,7 @@ class App(tk.Toplevel,GasGrid,Slider,Plotting_window):
         
         
         self.GasGrid.initialise_grid_axis(frame_2)
-       
+        
         self.Plotting_window.initialise_plotwindow(frame_3)
         self.Plotting_window.make_reset_button(frame_3)
         self.Plotting_window.make_model_scalebox(frame_5)
