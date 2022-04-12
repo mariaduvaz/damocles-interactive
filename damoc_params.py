@@ -259,6 +259,7 @@ class Plotting_window(DamoclesInput):
         self.toolbar.update()
         
         
+     def initialise_chitau_box(self):   
         tk.Label(self.frame_b_pw,text = 'Optical depth (\u03C4) ',font=self.buttonfont).pack(anchor='w',side=tk.LEFT)
         self.tau_text = tk.Text(self.frame_b_pw,height=2,width=20,font=self.buttonfont)
         self.tau_text.pack(anchor='w',side=tk.LEFT)
@@ -376,13 +377,12 @@ class Slider(Plotting_window):
 
         for i in self.slider_input_values:
             self.initialise_slider(self.slider_input_values[i])
-        #super(Slider,self).__init__(frame_b)
 
-        #self.DamoclesInput = DamoclesInput()
-        #self.Plotting_window = Plotting_window(frame_a, frame_b, frame_c)
-        
+        #initialising all plotwindow things here as sliders directly interact with these values
         self.initialise_plotwindow(frame_c)
-        
+        self.initialise_chitau_box()
+        self.make_reset_button(frame_c)
+        self.make_model_scalebox()
     
     def initialise_slider(self,slide_params):
         print(slide_params)
@@ -518,22 +518,15 @@ class App(tk.Toplevel,Slider):
         
         self.DamoclesInput = DamoclesInput()
         self.GasGrid = GasGrid(frame_2)
-        
         self.Plotting_window = Plotting_window(frame_3,frame_4,frame_5)
-        
         
         self.DamoclesInput.initialise_damocfile_input()
         self.DamoclesInput.make_clump_button(frame_1)
-        
-        
+         
         #create sliders for parameters that are changed by user
+        #plotting window things are initialised here
         Slider(frame_1,frame_2,frame_3,frame_4,frame_5)
  
-        
-    
-        self.Plotting_window.make_reset_button(frame_3)
-       
-        self.Plotting_window.make_model_scalebox()
         
         frame_1.place(x=950,y=515)
         frame_2.place(x=980,y=0) 
