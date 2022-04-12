@@ -255,32 +255,26 @@ class Plotting_window(DamoclesInput):
         
         self.fig = Figure(figsize=(7.5, 7.7), dpi=100)
         self.figure_canvas= FigureCanvasTkAgg(self.fig,self.frame_a_pw)
-        self.ax = self.fig.add_subplot(111)
+        self.toolbar = NavigationToolbar2Tk(self.figure_canvas, self.frame_a_pw)
+        self.toolbar.update()
         
-
+        
+        tk.Label(self.frame_b_pw,text = 'Optical depth (\u03C4) ',font=self.buttonfont).pack(anchor='w',side=tk.LEFT)
         self.tau_text = tk.Text(self.frame_b_pw,height=2,width=20,font=self.buttonfont)
         self.tau_text.pack(anchor='w',side=tk.LEFT)
-        self.chi_text = tk.Text(self.frame_b_pw,height=2,width=20,font=self.buttonfont)
-        
-        
-     def make_tautextbox(self):
-         tk.Label(self.frame_b_pw,text = 'Optical depth (\u03C4) ',font=self.buttonfont).pack(anchor='w',side=tk.LEFT)
-         
-         
-     def make_chitextbox(self):
         tk.Label(self.frame_b_pw,text = '\u03A7^2: ',font=self.buttonfont).pack(side=tk.LEFT)
+        self.chi_text = tk.Text(self.frame_b_pw,height=2,width=20,font=self.buttonfont)
         self.chi_text.pack(side=tk.LEFT)
        
+        
          
      def initialise_plotwindow(self,frame):
          
-          toolbar = NavigationToolbar2Tk(self.figure_canvas, self.frame_a_pw)
-          toolbar.update()
            
           self.res_kms = InputWindow.start_vars["Resolution (A)"][1]/(self.wavelength_peak_1*10) * 299792 
           trim_lims_vel = convert_wav_to_vel(trim_lims,(1+self.z)*(self.wavelength_peak_1*10.0),self.wavelength_peak_1*10.0)
           
-          
+          self.ax = self.fig.add_subplot(111)
           self.ax.axes.set_xlabel("Velocity (km/s)",fontsize=20)
           self.ax.axes.set_ylabel("Flux ($ergs$  $cm^{-2}$  $s^{-1}$  $\AA^{-1}$)",fontsize=20)
           self.ax.tick_params(axis='both', which='major',labelsize=20)
@@ -357,39 +351,48 @@ class Plotting_window(DamoclesInput):
          #modflux = convolve_spectra(self.res_kms, modvel,modflux)
          chi = chi_sq(self.obsflux,modflux,self.obs_err,modflux_e) 
          chi = round(chi,2)
-         print(chi)
+         
          self.chi_text.delete(1.0,6.0)
          self.chi_text.insert(tk.END,str(chi))
   
+    
         
 class Slider(Plotting_window):
-    def __init__(self,frame_a,frame_b,frame_c,frame_d,frame_e,init_val,range_vals,var_name,step_size):
+    def __init__(self,frame_a,frame_b,frame_c,frame_d,frame_e):
+        
         
         super(Slider,self).__init__(frame_c,frame_d,frame_e)
         
-        self.slider_input_values = {v_slider: [v_max_init,(1000, 15000),"Vmax (km/s)",1],r_slider: [Rrat_init,(0.01, 1),"Rin/Rout",0.0005],
-                               rho_slider: [rho_index_init,(-6, 6),"Density index (\u03B2)",0.01],md_slider: [mdust_init,(-9, 0.2),"log(Dust mass (M\u2609))",0.001],
-                               gs_slider: [grain_size_init,(-2.3, 0.5),'log(Grain radius (\u03BCm))',0.001], amc_frac_slider: [0.0,(0.0,1.0),'AmC Fraction',0.01]   }
-
-        #super(Slider,self).__init__(frame_b)
-        
-        #self.DamoclesInput = DamoclesInput()
-        
-        #self.Plotting_window = Plotting_window(frame_a, frame_b, frame_c)
-        
-        self.var_name = var_name
         self.sliderfont = TkFont.Font(family='bitstream charter', size=14)
-        self.lab = tk.Label(frame_a,text=self.var_name,font=self.sliderfont)
-        self.slider = tk.Scale(frame_a,from_=range_vals[0],to=range_vals[1],orient='horizontal',resolution=step_size,width=17,length=900,font=self.sliderfont)      
-        self.slider.set(init_val)
-        self.slider.bind("<ButtonRelease-1>", self.slider_command)      
-        self.lab.pack(fill='x', padx=1)      
-        self.slider.pack()
-        
+        self.slider_input_values = {"v_slider": [v_max_init,(1000, 15000),"Vmax (km/s)",1], "r_slider": [Rrat_init,(0.01, 1),"Rin/Rout",0.0005],
+                               "rho_slider": [rho_index_init,(-6, 6),"Density index (\u03B2)",0.01], "md_slider": [mdust_init,(-9, 0.2),"log(Dust mass (M\u2609))",0.001],
+                               "gs_slider": [grain_size_init,(-2.3, 0.5),'log(Grain radius (\u03BCm))',0.001], "amc_frac_slider": [0.0,(0.0,1.0),'AmC Fraction',0.01]   }
+    
         self.frame_a=frame_a
         self.frame_b=frame_b
         self.frame_c=frame_c
         self.frame_d=frame_d
+        
+
+        for i in self.slider_input_values:
+            self.initialise_slider(self.slider_input_values[i])
+        #super(Slider,self).__init__(frame_b)
+
+        #self.DamoclesInput = DamoclesInput()
+        #self.Plotting_window = Plotting_window(frame_a, frame_b, frame_c)
+        
+        self.initialise_plotwindow(frame_c)
+        
+    
+    def initialise_slider(self,slide_params):
+        print(slide_params)
+        lab = tk.Label(self.frame_a,text=slide_params[2],font=self.sliderfont)
+        slider = tk.Scale(self.frame_a,from_=slide_params[1][0],to=slide_params[1][1],orient='horizontal',resolution=slide_params[3],width=17,length=900,font=self.sliderfont)      
+        slider.set(slide_params[0])
+        slider.bind("<ButtonRelease-1>", self.slider_command)      
+        lab.pack(fill='x', padx=1)      
+        slider.pack()
+        
 
     def slider_command(self,event):
        
@@ -408,9 +411,9 @@ class Slider(Plotting_window):
         self.update_damocfile_input(slider_vals)
         #run damocles after sliders have been changed and input files have been changed with slider values
         model.run_damocles_wrap() 
-        #self.plot_model(self.frame_c)
+        self.plot_model(self.frame_c)
         self.update_tautextbox(self.frame_d)
-        #self.update_chitextbox(self.frame_d)
+        self.update_chitextbox(self.frame_d)
 
 
   
@@ -524,19 +527,12 @@ class App(tk.Toplevel,Slider):
         
         
         #create sliders for parameters that are changed by user
-        v_slider = Slider(frame_1,frame_2,frame_3,frame_4,frame_5,v_max_init,(1000, 15000),"Vmax (km/s)",1)
-        r_slider = Slider(frame_1,frame_2,frame_3,frame_4,frame_5,Rrat_init,(0.01, 1),"Rin/Rout",0.0005)
-        rho_slider = Slider(frame_1,frame_2,frame_3,frame_4,frame_5,rho_index_init,(-6, 6),"Density index (\u03B2)",0.01)
-        md_slider = Slider(frame_1,frame_2,frame_3,frame_4,frame_5,mdust_init,(-9, 0.2),"log(Dust mass (M\u2609))",0.001)
-        gs_slider = Slider(frame_1,frame_2,frame_3,frame_4,frame_5,grain_size_init,(-2.3, 0.5),'log(Grain radius (\u03BCm))',0.001)
-        amc_frac_slider = Slider(frame_1,frame_2,frame_3,frame_4,frame_5,0.0,(0.0,1.0),'AmC Fraction',0.01)
+        Slider(frame_1,frame_2,frame_3,frame_4,frame_5)
+ 
         
-        
-        
-        self.Plotting_window.initialise_plotwindow(frame_3)
+    
         self.Plotting_window.make_reset_button(frame_3)
-        self.Plotting_window.make_tautextbox()
-        self.Plotting_window.make_chitextbox()
+       
         self.Plotting_window.make_model_scalebox()
         
         frame_1.place(x=950,y=515)
@@ -550,6 +546,8 @@ class App(tk.Toplevel,Slider):
 ##########################################  PARAMETERS TO BE SPECIFIED BEFORE RUNNING CODE          #############################################
 ##########################################  These parameters are parsed to the damocles input files #############################################
 #################################################################################################################################################
+
+
 
 
 
