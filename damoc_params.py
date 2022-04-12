@@ -34,17 +34,19 @@ class DamoclesInput(object):
     
     def __init__(self):
         super(DamoclesInput,self).__init__()
+        self.obsfile = InputWindow.start_vars["Data Filename"][1]
         self.z = InputWindow.start_vars["Host Redshift"][1]
         self.wavelength_peak_1 = InputWindow.start_vars["Lab. wavelength peak 1 (A)"][1]
         self.wavelength_peak_2 = InputWindow.start_vars["Lab. wavelength peak 2 (A)"][1]
         self.age_d = int(InputWindow.start_vars["SN age (days)"][1])
-        
+        if InputWindow.start_vars["Snip region range (A)"][1] == "":
+           self.snip_regs=() 
         
         self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
         
-        self.obswav_init,self.obsflux_init= datafile_2_array(obsfile,isint=False,zipped=True)
+        self.obswav_init,self.obsflux_init= datafile_2_array(self.obsfile,isint=False,zipped=True)
         self.obswav,self.obsflux = trim_wav_flux(self.obswav_init,self.obsflux_init,trim_lims[0],trim_lims[1])
-        self.obsflux = snip_spect(self.obswav,self.obsflux,*snip_regs)
+        self.obsflux = snip_spect(self.obswav,self.obsflux,*self.snip_regs)
         #self.obsflux = [i-0.4e-16 for i in self.obsflux]
         self.obsvels = convert_wav_to_vel(self.obswav,(1+self.z)*(self.wavelength_peak_1*10.0),self.wavelength_peak_1*10)
     
@@ -120,6 +122,7 @@ class DamoclesInput(object):
     def initialise_damocfile_input(self):
         phot_no = InputWindow.start_vars['Photon packet number'][1] 
         is_doublet = InputWindow.start_vars["Doublet?"][1]
+        doublet_ratio = InputWindow.start_vars["Doublet ratio"][1]
       
         fi = fileinput.FileInput(files=(input_file,dust_file,gas_file,spec_file),inplace=True)
         
@@ -132,6 +135,8 @@ class DamoclesInput(object):
                 line=replace_str(str(np.amax(self.obsflux)*60),0,line)
             if 'doublet?' in line:
                 line=replace_str(is_doublet,0,line)
+            if 'Flux ratio' in line:
+                line=replace_str(doublet_ratio,0,line)
             if "first doublet component" in line:
                 line=replace_str(self.wavelength_peak_1,0,line)
             if "second doublet component" in line:
@@ -424,7 +429,7 @@ class InputWindow(tk.Tk):
        self.geometry('500x800')
        
        self.buttonfont = TkFont.Font(family='bitstream charter', size=16)
-       self.filename = tk.StringVar()
+       self.filename = tk.StringVar(value='iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF_contsub.ascii')
        self.z_var = tk.DoubleVar(value=0.034)
        self.SN_name = tk.StringVar()
        self.Line_name = tk.StringVar()
@@ -526,7 +531,7 @@ class App(tk.Toplevel,Slider):
         #create sliders for parameters that are changed by user
         #plotting window things are initialised here
         Slider(frame_1,frame_2,frame_3,frame_4,frame_5)
- 
+        print(Slider.__mro__)
         
         frame_1.place(x=950,y=515)
         frame_2.place(x=980,y=0) 
@@ -545,7 +550,7 @@ class App(tk.Toplevel,Slider):
 
 
 path = os.path.dirname(os.path.realpath(__file__))
-obsfile ="iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF_contsub.ascii"
+#obsfile ="iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF_contsub.ascii"
 
 input_file = "input/input.in"
 gas_file = "input/gas.in"
@@ -564,31 +569,13 @@ bg_lims = (5809,6300)
 #specify a list here of regions in the line profile where there could be contaminating features also in wavelength space which you could remove
 snip_regs = () 
 
-#put in the wavelength of the spectral line transition you want to create a model of in NANOMETRES
-#set this to true if you're modelling a doublet (two close together lines that have blended into each other like O2+ 4959,5007)
-doublet_ratio = 3.13
 
-#specify resoln
-#resolution= 10.0
-#res_kms = resolution/(wavelength_peak_1*10) * 299792 
-#print(res_kms)
-#These are our default model parameters values for the sliders
 
 v_max_init = 4130  #maximum velocity at edge of shell
 Rrat_init = 0.31 #radius of inner shell boundary divided by ratio of outer shell. Determines how 'thick' your gas shell is
 rho_index_init=1.330   #density is proportional to radius^(-rho_index)
 mdust_init=-7.67       #mass of dust in solar masses
 grain_size_init=-1.235    #size of dust grain in microns
-
-
-
-#age of supernova remnant at the time that observational data was taken, in days.
-#age_d = 778  
-##no of grid cells in x,y,z direction used to make the spherical shell model in damocles
-#grid_divs = 20   
-#no of photon packets w. which to run simulation. more packets = more time for each simulation to run and higher SNR model line profile
-#phot_no = 30000
-
 
 
 ##########################################
