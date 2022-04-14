@@ -50,7 +50,7 @@ class DamoclesInput(object):
           self.snip_regs = tuple([float(i) for i in self.snip_regs.split(",")])
           
          
-        
+    
         self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
         
         self.obswav_init,self.obsflux_init= datafile_2_array(self.obsfile,isint=False,zipped=True)
@@ -330,9 +330,7 @@ class Plotting_window(DamoclesInput):
             
             def scalebox_command(var):
                 sf = float(scale_var.get())
-                #modvel,modflux,modflux_e = datafile_2_array(outfile,isint=False,zipped=True)
                 modflux= [i * sf for i in self.modflux]
-                #modflux = convolve_spectra(self.res_kms, modvel,modflux)
                 chi = chi_sq(self.obsflux,modflux,self.obs_err,self.modflux_e) 
                 chi = round(chi,2)
                 self.chi_text.delete(1.0,6.0)
@@ -352,7 +350,6 @@ class Plotting_window(DamoclesInput):
          
      def update_tautextbox(self,frame):
          props = datafile_2_array(mod_prop_file,isint=False,zipped=False)
-         print("RUNNING")
          for i in props:      
              if 'optical' in i and 'depth' in i and 'wavelength' in i and 'cell' not in i and '(absn)' not in i:
                  tau = i[-1]
@@ -489,15 +486,12 @@ class InputWindow(tk.Tk):
       
        z_entry = tk.Entry(self, textvariable=variablename)
        z_entry.place(x=300,y=110+y_increm)
-         
-
      
     
     def open_window(self,event=None):
         #upon pressing button to start app after entry fields have been filled,
         #loop through the dictionary and collect values
-        
-        
+            
         for i in list(self.start_vars.keys()):                
                 self.start_vars.get(i)[1] = self.start_vars.get(i)[0].get()
       

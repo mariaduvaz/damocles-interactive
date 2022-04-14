@@ -59,7 +59,7 @@ def convert_wav_to_vel(wavarray,obspeak,labpeak):
     final_vel = []
     
     zpeak = (float(obspeak) - float(labpeak))/float(obspeak)
-    print(zpeak)
+    
     radvel = 299792 * zpeak
   
 
@@ -141,8 +141,9 @@ def snip_spect(x_axis,flux_axis,*args):
                ind2 = x_axis.index(x2)
                y1 = flux_axis[ind1]
                y2 = flux_axis[ind2]
-             
+               
                arraysize = ind2 - ind1
+               
                y_replacementpoints = np.linspace(y1,y2,arraysize)
                flux_axis[ind1:ind2] = y_replacementpoints
                
@@ -179,7 +180,7 @@ def chi_sq(obs_flux,mod_flux,obs_err,mod_err):
         print("observed and modelled flux arrays need to be same length to perform chi sq calculation")
         
 
-'''
+
 def convolve_spectra(res,velarray,fluxarray,Velocity=True):
     
             binwidth = abs(velarray[2] - velarray[1])
@@ -190,4 +191,3 @@ def convolve_spectra(res,velarray,fluxarray,Velocity=True):
             mod_convolve = convolve(fluxarray,g,boundary = 'extend')
             return(mod_convolve)
              
-'''
