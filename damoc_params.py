@@ -25,9 +25,7 @@ from matplotlib.figure import Figure
 ###
 
 
-        
-    
-        
+           
 class DamoclesInput(object):
     
     "This class contains all functions and variables which pass input parameters to the DAMOCLES code"
@@ -39,14 +37,26 @@ class DamoclesInput(object):
         self.wavelength_peak_1 = InputWindow.start_vars["Lab. wavelength peak 1 (A)"][1]
         self.wavelength_peak_2 = InputWindow.start_vars["Lab. wavelength peak 2 (A)"][1]
         self.age_d = int(InputWindow.start_vars["SN age (days)"][1])
-        if InputWindow.start_vars["Snip region range (A)"][1] == "":
+        self.snip_regs = InputWindow.start_vars["Snip region range (A)"][1]
+        self.bg_lims = InputWindow.start_vars["Continuum region range (A)"][1]
+        self.trim_lims = InputWindow.start_vars["Emission Line region range (A)"][1]
+        
+        self.bg_lims = tuple([float(i) for i in self.bg_lims.split(",")])
+        self.trim_lims = tuple([float(i) for i in self.trim_lims.split(",")])
+        
+        if self.snip_regs == "" :
            self.snip_regs=() 
+        else:
+          self.snip_regs = tuple([float(i) for i in self.snip_regs.split(",")])
+          
+         
         
         self.buttonfont = TkFont.Font(family='bitstream charter', size=20)
         
         self.obswav_init,self.obsflux_init= datafile_2_array(self.obsfile,isint=False,zipped=True)
-        self.obswav,self.obsflux = trim_wav_flux(self.obswav_init,self.obsflux_init,trim_lims[0],trim_lims[1])
+        self.obswav,self.obsflux = trim_wav_flux(self.obswav_init,self.obsflux_init,self.trim_lims[0],self.trim_lims[1])
         self.obsflux = snip_spect(self.obswav,self.obsflux,*self.snip_regs)
+        
         #self.obsflux = [i-0.4e-16 for i in self.obsflux]
         self.obsvels = convert_wav_to_vel(self.obswav,(1+self.z)*(self.wavelength_peak_1*10.0),self.wavelength_peak_1*10)
     
@@ -58,7 +68,7 @@ class DamoclesInput(object):
         
     def get_obserr(self):
             #calculate observational uncert on input spectrum using background regions provided
-                bg_vels,bg_flux = trim_wav_flux(self.obswav_init,self.obsflux_init,bg_lims[0],bg_lims[1])
+                bg_vels,bg_flux = trim_wav_flux(self.obswav_init,self.obsflux_init,self.bg_lims[0],self.bg_lims[1])
                 return np.std(bg_flux)
     
     def write_obsfile_out(self):
@@ -255,13 +265,14 @@ class Plotting_window(DamoclesInput):
         self.frame_b_pw = frame_b_pw
         self.frame_c_pw = frame_c_pw
         
-        
         self.buttonfont = TkFont.Font(family='bitstream charter', size=16)
         
         self.fig = Figure(figsize=(7.5, 7.7), dpi=100)
         self.figure_canvas= FigureCanvasTkAgg(self.fig,self.frame_a_pw)
         self.toolbar = NavigationToolbar2Tk(self.figure_canvas, self.frame_a_pw)
         self.toolbar.update()
+        
+        self.res_kms = InputWindow.start_vars["Resolution (A)"][1]/(self.wavelength_peak_1*10) * 299792 
         
         
      def initialise_chitau_box(self):   
@@ -277,8 +288,8 @@ class Plotting_window(DamoclesInput):
      def initialise_plotwindow(self,frame):
          
            
-          self.res_kms = InputWindow.start_vars["Resolution (A)"][1]/(self.wavelength_peak_1*10) * 299792 
-          trim_lims_vel = convert_wav_to_vel(trim_lims,(1+self.z)*(self.wavelength_peak_1*10.0),self.wavelength_peak_1*10.0)
+       
+          trim_lims_vel = convert_wav_to_vel(self.trim_lims,(1+self.z)*(self.wavelength_peak_1*10.0),self.wavelength_peak_1*10.0)
           
           self.ax = self.fig.add_subplot(111)
           self.ax.axes.set_xlabel("Velocity (km/s)",fontsize=20)
@@ -286,22 +297,21 @@ class Plotting_window(DamoclesInput):
           self.ax.tick_params(axis='both', which='major',labelsize=20)
           self.ax.set_xlim([trim_lims_vel[0],trim_lims_vel[1]])
           self.ax.plot(self.obsvels,self.obsflux) 
-          self.fig.tight_layout()
           self.figure_canvas.get_tk_widget().pack(fill='x', expand=1)
-      
+
     
      def plot_model(self,frame):
           
-          modvel,modflux,modflux_e = datafile_2_array(outfile,isint=False,zipped=True)
-          #modflux = convolve_spectra(self.res_kms, modvel,modflux)
-          modflux= [i * np.amax(self.obsflux)/np.amax(modflux) for i in modflux]
+          self.modvel,self.modflux,self.modflux_e = datafile_2_array(outfile,isint=False,zipped=True)
+          self.modflux = convolve_spectra(self.res_kms, self.modvel,self.modflux)
+          self.modflux= [i * np.amax(self.obsflux)/np.amax(self.modflux) for i in self.modflux]
           
           
           #self.ax.text(np.amax(modvel)/2,Line.text_high1,Line.line_id_lab,fontsize=22)
           #self.ax.text(np.amax(modvel)/2,Line.text_high2,Line.dust_type_lab,fontsize=22)           
           #self.ax.text(np.amax(modvel)/2,Line.text_high1+(Line.text_high1-Line.text_high2),"iPTF14hls d"+str(age_d),fontsize=22)
           
-          self.ax.plot(modvel,modflux) 
+          self.ax.plot(self.modvel,self.modflux) 
           self.figure_canvas.draw()
             
      def make_reset_button(self,frame):
@@ -320,15 +330,15 @@ class Plotting_window(DamoclesInput):
             
             def scalebox_command(var):
                 sf = float(scale_var.get())
-                modvel,modflux,modflux_e = datafile_2_array(outfile,isint=False,zipped=True)
-                modflux= [i * np.amax(self.obsflux)/np.amax(modflux) * sf for i in modflux]
-               # modflux = convolve_spectra(self.res_kms, modvel,modflux)
-                chi = chi_sq(self.obsflux,modflux,self.obs_err,modflux_e) 
+                #modvel,modflux,modflux_e = datafile_2_array(outfile,isint=False,zipped=True)
+                modflux= [i * sf for i in self.modflux]
+                #modflux = convolve_spectra(self.res_kms, modvel,modflux)
+                chi = chi_sq(self.obsflux,modflux,self.obs_err,self.modflux_e) 
                 chi = round(chi,2)
                 self.chi_text.delete(1.0,6.0)
                 self.chi_text.insert(tk.END,str(chi))
                 
-                self.ax.plot(modvel,modflux) 
+                self.ax.plot(self.modvel,modflux) 
                 self.figure_canvas.draw()
             
             scale_var_entry = tk.Entry(self.frame_c_pw, textvariable=scale_var)
@@ -353,9 +363,9 @@ class Plotting_window(DamoclesInput):
          
      def update_chitextbox(self,frame):
          
-         modvel,modflux,modflux_e= datafile_2_array(outfile,isint=False,zipped=True)
-         #modflux = convolve_spectra(self.res_kms, modvel,modflux)
-         chi = chi_sq(self.obsflux,modflux,self.obs_err,modflux_e) 
+        # modvel,modflux,modflux_e= datafile_2_array(outfile,isint=False,zipped=True)
+        # modflux = convolve_spectra(self.res_kms, modvel,modflux)
+         chi = chi_sq(self.obsflux,self.modflux,self.obs_err,self.modflux_e) 
          chi = round(chi,2)
          
          self.chi_text.delete(1.0,6.0)
@@ -433,8 +443,8 @@ class InputWindow(tk.Tk):
        self.z_var = tk.DoubleVar(value=0.034)
        self.SN_name = tk.StringVar()
        self.Line_name = tk.StringVar()
-       self.bg_lims = tk.StringVar()
-       self.trim_lims = tk.StringVar()
+       self.bg_lims = tk.StringVar(value="5809,6300")
+       self.trim_lims = tk.StringVar(value="6650,7050")
        self.snip_reg = tk.StringVar()
        self.is_doublet= tk.StringVar(value="false")
        self.wavelength_peak_1= tk.DoubleVar(value=656.3) 
@@ -540,14 +550,6 @@ class App(tk.Toplevel,Slider):
         frame_5.place(x=235,y=920)
         
     
-#################################################################################################################################################
-##########################################  PARAMETERS TO BE SPECIFIED BEFORE RUNNING CODE          #############################################
-##########################################  These parameters are parsed to the damocles input files #############################################
-#################################################################################################################################################
-
-
-
-
 
 path = os.path.dirname(os.path.realpath(__file__))
 #obsfile ="iPTF14hls_2016-11-08_14-31-56_FTN_FLOYDS-N_iPTF_contsub.ascii"
@@ -559,15 +561,6 @@ dust_file = "input/dust.in"
 
 outfile = path + "/output/integrated_line_profile_binned.out"
 mod_prop_file = path + "/output/model_properties.out" 
-
-
-
-#trim_lims determine the limits of wavelength space where your line profile is at. 
-trim_lims = (6650,7050)
-#choose an area of continuum in the spectra where there is no emission features in velocity space. the standard dev of flux in this region gives observational uncertainty which is used in the chi sq calculation
-bg_lims = (5809,6300)
-#specify a list here of regions in the line profile where there could be contaminating features also in wavelength space which you could remove
-snip_regs = () 
 
 
 
@@ -585,7 +578,7 @@ grain_size_init=-1.235    #size of dust grain in microns
 
 
 ###########################################################################################
-######################## initial processing of observed spectrum  #########################
+######################## running code  #########################
 ###########################################################################################
 
 
