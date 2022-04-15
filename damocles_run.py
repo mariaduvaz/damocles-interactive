@@ -31,7 +31,7 @@ class DamoclesInput(object):
     "This class contains all functions and variables which pass input parameters to the DAMOCLES code"
     
     def __init__(self):
-        super(DamoclesInput,self).__init__()
+        
         self.obsfile = InputWindow.start_vars["Data Filename"][1]
         self.z = InputWindow.start_vars["Host Redshift"][1]
         self.wavelength_peak_1 = InputWindow.start_vars["Lab. wavelength peak 1 (A)"][1]
@@ -160,102 +160,8 @@ class DamoclesInput(object):
         fi.close()   
         
         
-        
-class GasGrid(DamoclesInput):
-    
-    def __init__(self,frame):
-        super(GasGrid,self).__init__()
-        
-        #self.age = damoc_class.age_d
-        self.fig = Figure(figsize=(8.5, 5.3), dpi=100)
-        self.ax = self.fig.add_subplot(111, projection='3d')
-        self.figure_canvas= FigureCanvasTkAgg(self.fig,frame)
-        self.initialise_grid_axis(frame)
-    
-        
-    def make_Grid(self,v_max,Rrat,rho_index,divno):
-	#creating a gridfile of the supernova here
-#where we have 4 1d arrays; a list of x,y,z and density points
-#this allows us to plot what the model looks like 
-
-        v_min = v_max * Rrat
-        Rout = v_max * self.age_d * 8.64e-6 * 1e15
-        Rin = v_min* self.age_d * 8.64e-6 * 1e15
-      
-        #grid divisions for a uniform grid
-        grid_arr = np.linspace(-Rout,Rout,divno)
-
-        #These values contain every point in a 40*40*40 grid from the limits of -Rout,Rout 
-        Y,X,Z = np.meshgrid(grid_arr,grid_arr,grid_arr) 
-        #turning these into 1d arrays
-        Xf = X.flatten()
-        Yf = Y.flatten()  
-        Zf = Z.flatten()
-        rads= [np.sqrt(Xf[i]**2 + Yf[i]**2 + Zf[i]**2) for i in range(len(Xf))]
-        rho = np.zeros((len(Xf)))
-        
-        plotdens,plotx,ploty,plotz = [],[],[],[]
-
-	    #looping through radius of every grid point.
-	    #if rad is within Rout and Rin, set density using r^-(rho_index) law
-        for j in range(len(rads)):
-           if abs(rads[j]) <= Rout and abs(rads[j]) >= Rin:
-              if Xf[j] > 0 and Yf[j] > 0 and Zf[j] > 0:
-                 rho[j] = (abs(rads[j]))**(-rho_index)*1e20   #randomly rescaling the density to make it a reasonable number
-              else:
-	           
-                rho[j] = (abs(rads[j]))**(-rho_index)*1e20
-                plotdens.append(rho[j])
-                plotx.append(Xf[j])
-                ploty.append(Yf[j])
-                plotz.append(Zf[j])
-
-        return plotx,ploty,plotz,plotdens
 
 
-
-    def setax(self,axis,g_s):
-       axis.view_init(elev=30, azim=50)
-       axis.set_xlabel('X axis (cm)')
-       axis.set_ylabel('Y axis (cm)')
-       axis.set_zlabel('Z axis (cm)')
-       axis.set_title("Model of gas distribution in a Supernova")
-       axis.set_xlim([-1.5*g_s,1.5*g_s])
-       axis.set_ylim([-1.5*g_s,1.5*g_s])
-       axis.set_zlim([-1.5*g_s,1.5*g_s])
-
-    
-    
-    def initialise_grid_axis(self,frame):
-        
-        #plotting initial grid made by specified initial parameter values and setting up color-bar scale and axis 
-        
-        x,y,z,d = self.make_Grid(v_max_init,Rrat_init,rho_index_init,20)
-        grid_lim= np.amax(x)
-        self.setax(self.ax,grid_lim)
-
-        l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
-        cbar = self.fig.colorbar(l)
-        cbar.set_label('density', rotation=270,size=18,labelpad=20)
-        cbar.ax.tick_params(labelsize=13)
-        self.fig.tight_layout()
-        self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
-       
-
-    def update_gasgrid(self,frame,params):
-         print(params)
-         try: 
-             self.figure_canvas.get_tk_widget().pack_forget()
-         except AttributeError: 
-            pass 
-    
-         x,y,z,d = self.make_Grid(params[0],params[1],params[2],self.age_d,20) 
-         l = self.ax.scatter(x,y,z,c=d,cmap="nipy_spectral")
-               
-         self.figure_canvas.get_tk_widget().pack(side=tk.TOP, fill='x', expand=1)
-         self.figure_canvas.draw()
-  
-    
 
 class Plotting_window(DamoclesInput):
      def __init__(self,frame_a_pw,frame_b_pw,frame_c_pw):
@@ -287,8 +193,6 @@ class Plotting_window(DamoclesInput):
          
      def initialise_plotwindow(self,frame):
          
-           
-       
           trim_lims_vel = convert_wav_to_vel(self.trim_lims,(1+self.z)*(self.wavelength_peak_1*10.0),self.wavelength_peak_1*10.0)
           
           self.ax = self.fig.add_subplot(111)
@@ -305,11 +209,7 @@ class Plotting_window(DamoclesInput):
           self.modvel,self.modflux,self.modflux_e = datafile_2_array(outfile,isint=False,zipped=True)
           self.modflux = convolve_spectra(self.res_kms, self.modvel,self.modflux)
           self.modflux= [i * np.amax(self.obsflux)/np.amax(self.modflux) for i in self.modflux]
-          
-          
-          #self.ax.text(np.amax(modvel)/2,Line.text_high1,Line.line_id_lab,fontsize=22)
-          #self.ax.text(np.amax(modvel)/2,Line.text_high2,Line.dust_type_lab,fontsize=22)           
-          #self.ax.text(np.amax(modvel)/2,Line.text_high1+(Line.text_high1-Line.text_high2),"iPTF14hls d"+str(age_d),fontsize=22)
+         
           
           self.ax.plot(self.modvel,self.modflux) 
           self.figure_canvas.draw()
@@ -373,24 +273,34 @@ class Plotting_window(DamoclesInput):
 class Slider(Plotting_window):
     def __init__(self,frame_a,frame_b,frame_c,frame_d,frame_e):
         
+        self.frame_a=frame_a
+        self.frame_b=frame_b
+        self.frame_c=frame_c
+        self.frame_d=frame_d
+        self.frame_e=frame_e
         
         super(Slider,self).__init__(frame_c,frame_d,frame_e)
+        #Plotting_window.__init__(self,self.frame_c,self.frame_d,self.frame_e)
+        #GasGrid.__init__(self,self.frame_b)
         
         self.sliderfont = TkFont.Font(family='bitstream charter', size=14)
         self.slider_input_values = {"v_slider": [v_max_init,(1000, 15000),"Vmax (km/s)",1], "r_slider": [Rrat_init,(0.01, 1),"Rin/Rout",0.0005],
                                "rho_slider": [rho_index_init,(-6, 6),"Density index (\u03B2)",0.01], "md_slider": [mdust_init,(-9, 0.2),"log(Dust mass (M\u2609))",0.001],
                                "gs_slider": [grain_size_init,(-2.3, 0.5),'log(Grain radius (\u03BCm))',0.001], "amc_frac_slider": [0.0,(0.0,1.0),'AmC Fraction',0.01]   }
     
-        self.frame_a=frame_a
-        self.frame_b=frame_b
-        self.frame_c=frame_c
-        self.frame_d=frame_d
+        
         
 
         for i in self.slider_input_values:
             self.initialise_slider(self.slider_input_values[i])
 
+        
         #initialising all plotwindow things here as sliders directly interact with these values
+        self.fig2 = Figure(figsize=(8.5, 5.3), dpi=100)
+        self.ax2 = self.fig2.add_subplot(111, projection='3d')
+        self.figure_canvas2= FigureCanvasTkAgg(self.fig2,frame_b)
+        initialise_grid_axis(v_max_init,Rrat_init,rho_index_init,self.age_d,self.ax2,self.fig2,self.figure_canvas2,frame_b)
+        
         self.initialise_plotwindow(frame_c)
         self.initialise_chitau_box()
         self.make_reset_button(frame_c)
@@ -419,7 +329,7 @@ class Slider(Plotting_window):
         slider_vals[4] = 10**(slider_vals[4])
         
         #pass all slider values upon a slider change 
-        #self.update_gasgrid(self.frame_b,slider_vals)
+        update_gasgrid(self.ax2,self.figure_canvas2,self.frame_b,self.age_d,slider_vals)
         self.update_damocfile_input(slider_vals)
         #run damocles after sliders have been changed and input files have been changed with slider values
         model.run_damocles_wrap() 
@@ -526,7 +436,7 @@ class App(tk.Toplevel,Slider):
         
         
         self.DamoclesInput = DamoclesInput()
-        self.GasGrid = GasGrid(frame_2)
+       
         self.Plotting_window = Plotting_window(frame_3,frame_4,frame_5)
         
         self.DamoclesInput.initialise_damocfile_input()
