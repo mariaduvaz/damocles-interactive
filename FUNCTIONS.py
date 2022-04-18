@@ -20,8 +20,7 @@ import os
 import sys
 import fileinput
 import tkinter as tk
-from astropy.convolution import Gaussian1DKernel
-from astropy.convolution import convolve, convolve_fft
+from scipy.ndimage import gaussian_filter1d
 ####read in data file and split each column into arrays!! 
 
 
@@ -187,9 +186,11 @@ def convolve_spectra(res,velarray,fluxarray,Velocity=True):
             binwidth = abs(velarray[2] - velarray[1])
            
             sigma = res/(binwidth *2.3548)
-            g = Gaussian1DKernel(stddev=sigma)
             
-            mod_convolve = convolve(fluxarray,g,boundary = 'extend')
+            #make a gaussian using sigma
+            mod_convolve=gaussian_filter1d(fluxarray, sigma)
+            
+            #mod_convolve = np.convolve(fluxarray,g,boundary = 'extend')
             return(mod_convolve)
              
 
